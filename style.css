@@ -1,0 +1,10 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#game{background:#111;display:block}
+#controls{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:0 14px calc(10px + env(safe-area-inset-bottom));pointer-events:none}
+.pad{display:flex;gap:10px;pointer-events:auto}
+.pad button{width:68px;height:68px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);color:#fff;font-size:26px;touch-action:none}
+.pad button.on{background:rgba(255,255,255,.5)}
+#rotate{display:none;position:fixed;inset:0;background:#111;color:#fff;align-items:center;justify-content:center;font-size:22px;text-align:center;padding:20px}
+@media (orientation:portrait){#rotate{display:flex}}

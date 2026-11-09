@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Fight Arena</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div id="controls">
+    <div class="pad left">
+      <button data-key="left">◀</button>
+      <button data-key="up">▲</button>
+      <button data-key="right">▶</button>
+    </div>
+    <div class="pad right">
+      <button data-key="punch">👊</button>
+      <button data-key="kick">🦵</button>
+      <button data-key="special">⚡</button>
+    </div>
+  </div>
+  <div id="rotate">Rotate your phone to landscape 📱↻</div>
+</div>
+<script src="config.js"></script>
+<script src="characters.js"></script>
+<script src="fighter.js"></script>
+<script src="match.js"></script>
+<script src="net.js"></script>
+<script src="ai.js"></script>
+<script src="input.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
