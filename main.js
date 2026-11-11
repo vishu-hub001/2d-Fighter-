@@ -136,6 +136,13 @@
     ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(mx, 62, mw, 8); ctx.fillStyle = full ? '#ff5a3a' : '#7ad6ff'; if (full) { ctx.shadowColor = '#ff5a3a'; ctx.shadowBlur = 10 + 6 * Math.sin(tick * .3); }
     const mwid = mw * s.mt / 100; ctx.fillRect(side === 0 ? mx + mw - mwid : mx, 62, mwid, 8); ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1; ctx.strokeRect(mx, 62, mw, 8);
     if (full) txt('SUPER READY', side === 0 ? mx : mx + mw, 81, 11, '#ffb04a', side === 0 ? 'left' : 'right');
+    if (def.mana) {   // MANA bar (casters): sits under the health bar, ticks mark the spell costs
+      const mw2 = 170, mx2 = side === 0 ? 372 - mw2 : 428, my = 40, mh = 6, fr = Math.max(0, Math.min(1, (s.mn || 0) / def.mana)), mwd = mw2 * fr;
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(mx2, my, mw2, mh); const gm = ctx.createLinearGradient(0, my, 0, my + mh); gm.addColorStop(0, '#b8dcff'); gm.addColorStop(1, '#3a6fe0'); ctx.fillStyle = gm; ctx.fillRect(side === 0 ? mx2 + mw2 - mwd : mx2, my, mwd, mh);
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1; ctx.strokeRect(mx2, my, mw2, mh);
+      ctx.strokeStyle = 'rgba(0,0,0,.55)'; for (const cost of [10, 20, 30]) { const tx = mx2 + (side === 0 ? mw2 - mw2 * cost / def.mana : mw2 * cost / def.mana); ctx.beginPath(); ctx.moveTo(tx, my); ctx.lineTo(tx, my + mh); ctx.stroke(); }
+      txt('MANA', side === 0 ? mx2 - 5 : mx2 + mw2 + 5, my + 7, 9, '#9fd0ff', side === 0 ? 'right' : 'left');
+    }
     if (s.rg) txt('RAGE', side === 0 ? 372 : 428, 96, 12, '#ff4040', side === 0 ? 'right' : 'left');
   }
   function speaker() {
@@ -216,7 +223,7 @@
       txt('Keys: WASD / arrows · J U K I = LP HP LK HK · L special · H grab · ; super · M mute', W / 2, 438, 11, '#9aa0c8');
     } else if (screen === 'how') {
       txt('HOW TO PLAY', W / 2, 44, 34, '#ffd23f');
-      const L = ['Hold BACK to block. Hold DOWN+BACK to block low attacks.', 'HIGH hits whiff if you crouch. LOW hits need a crouch-block. MID hits (overhead, launcher) beat crouch-blocking.', 'LP, LP, HP = string combo. Press the next button right as the move lands.', 'DOWN-FORWARD + HP = LAUNCHER. Then hit them with LP/HP while they are airborne (juggle).', 'FORWARD + HP = overhead.  FORWARD + HK = long kick.  DOWN + HK = sweep.', 'GRAB (or LP+LK) beats blocking. Opponent can BREAK it by pressing GRAB fast.', 'Each fighter has 5 specials: SP, ↓+SP, →+SP, ←+SP, ↘+SP (see the card names).', 'PRO: ↓↘→+P, →↓↘+P, ↓↙←+K, ↓↙←+P, ↓↘→+K. Double-tap → or ← to dash. →+LK = knee (Steve).', 'Fill the SUPER bar by fighting, then hit SUPER for a screen-filling move.', 'Under 25% health you enter RAGE: +15% damage.'];
+      const L = ['Hold BACK to block. Hold DOWN+BACK to block low attacks.', 'HIGH hits whiff if you crouch. LOW hits need a crouch-block. MID hits (overhead, launcher) beat crouch-blocking.', 'LP, LP, HP = string combo. Press the next button right as the move lands.', 'DOWN-FORWARD + HP = LAUNCHER. Then hit them with LP/HP while they are airborne (juggle).', 'FORWARD + HP = overhead.  FORWARD + HK = long kick.  DOWN + HK = sweep.', 'GRAB (or LP+LK) beats blocking. Opponent can BREAK it by pressing GRAB fast.', 'Each fighter has 5 specials: SP, ↓+SP, →+SP, ←+SP, ↘+SP (see the card names).', 'PRO: ↓↘→+P, →↓↘+P, ↓↙←+K, ↓↙←+P, ↓↘→+K. Double-tap → or ← to dash. →+LK = knee (Steve).', 'Fill the SUPER bar by fighting, then hit SUPER for a screen-filling move.', 'Under 25% health you enter RAGE: +15% damage.', 'Zephyr casts with MANA (crouch to recharge). Gorath has POISE armour on heavy swings.'];
       L.forEach((s, i) => txt(s, W / 2, 84 + i * 31, 14, '#fff', 'center', false)); txt('Tap to go back', W / 2, 425, 14, '#9aa0c8');
     } else if (screen === 'lobby') {
       btn(BACK.x, BACK.y, BACK.w, BACK.h, 'BACK', false); txt('ROOM CODE', W / 2, 150, 22, '#cfd3ff'); txt(code, W / 2, 240, 90, '#ffd23f'); txt('Send this code to your friend (tap to copy)', W / 2, 290, 16, '#fff'); txt(notice || 'Waiting for friend to join…', W / 2, 330, 16, '#9aa0c8');
@@ -230,7 +237,8 @@
         const nm = CW < 130, words = c.name.split(' ');
         if (nm && words.length > 1) { fit(words[0], cx, 288, CW - 8, 12, '#fff'); fit(words.slice(1).join(' '), cx, 301, CW - 8, 12, '#fff'); fit(c.title, cx, 315, CW - 8, 10, c.accent, 'center', false); }
         else { fit(c.name, cx, 296, CW - 8, nm ? 12 : 15, '#fff'); fit(c.title, cx, 312, CW - 8, nm ? 10 : 11, c.accent, 'center', false); }
-        const mv = c.moves; if (!nm) { txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 328, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ' + mv.sp4.name, x + CW / 2, 340, 9, '#cfd3ff', 'center', false); txt(mv.sp5.name + ' · ★ ' + mv.super.name, x + CW / 2, 352, 9, '#ffb04a', 'center', false); } else { fit('5 specials', cx, 331, CW - 8, 9, '#cfd3ff', 'center', false); fit('★ ' + mv.super.name, cx, 345, CW - 6, 8, '#ffb04a', 'center', false); }
+        const mv = c.moves; if (!nm) { txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 328, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ' + mv.sp4.name, x + CW / 2, 340, 9, '#cfd3ff', 'center', false); txt(mv.sp5.name + ' · ★ ' + mv.super.name, x + CW / 2, 352, 9, '#ffb04a', 'center', false); } else { if (c.cls) { fit(c.cls.toUpperCase() + (c.mana ? ' · MANA' : ''), cx, 328, CW - 6, 9, c.accent, 'center', false); fit('PWR ' + Math.round((c.power || 1) * 100) + '  DEF ' + Math.round((c.defense || 1) * 100), cx, 340, CW - 6, 8, '#cfd3ff', 'center', false); fit('★ ' + mv.super.name, cx, 352, CW - 6, 8, '#ffb04a', 'center', false); }
+        else { fit('5 specials', cx, 331, CW - 8, 9, '#cfd3ff', 'center', false); fit('★ ' + mv.super.name, cx, 345, CW - 6, 8, '#ffb04a', 'center', false); } }
       }
       if (mode === 'bot') ['easy', 'normal', 'hard'].forEach((d, i) => btn(250 + i * 104, 372, 92, 30, d.toUpperCase(), lvl === d));
       if (mode === 'train') txt('Practice combos on a dummy. Meter is always full.', W / 2, 392, 13, '#8cff9e');

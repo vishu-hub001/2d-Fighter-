@@ -28,6 +28,22 @@ Server-authoritative 60 Hz fighting game. Upload ALL files in this folder (flat,
 - **Ambient:** Blaze sheds embers, Frost sheds snow; low-HP red heartbeat vignette; VS card in round 1; confetti when you win.
 - **Audio:** procedural fight music (different groove per stage, intensifies at low HP / long combos / last 10s), pitch-varied hit sounds, super-ready ping, combo ticks, win jingle. **Mute with the speaker icon or the M key** (remembered).
 
+## Classes, weapons & mana (new)
+Every fighter can now have a **class** with its own stats (`classes.js`). Stats: **PWR** = damage dealt, **DEF** = damage taken divisor (shown on the select cards).
+
+| Fighter | Class / weapon | HP | PWR | DEF | Identity |
+|---|---|---|---|---|---|
+| **RONIN** | Swordsman - Long Sword | 990 | 100 | 100 | Longest normal reach, fast Iaido Draw, low Wind Cutter forces crouch-blocks, Falling Blossom overhead |
+| **GORATH** | Knight - Heavy Sword | 1180 | 120 | 115 | Slow but huge damage. **POISE**: heavy swings (HP, overhead, launcher, Executioner, Charge) soak hits at reduced damage and keep swinging |
+| **SYLVA** | Archer - Longbow | 900 | 95 | 90 | Fragile + fast, great back-dash. Quick Shot, Power Shot, Arrow Rain (3 arcing arrows), Evasive Shot (hop back + fire) |
+| **ZEPHYR** | Mage - Arcane Staff | 880 | 110 | 90 | **MANA 100.** Fire Bolt 10, Blink Strike 15, Arcane Burst 20, Mend 30 (heals 90). Meditate refills mana but leaves you open |
+
+**Mana rules:** regenerates slowly, **2.5x faster while crouching**, and you gain mana when your hits land. A spell you can't pay for fizzles ("NO MANA"). The staff orb glows less as mana runs low. Meter bar sits under the health bar (ticks = spell costs).
+
+**Weapons** live in `G.WEAPONS` (`classes.js`): short sword, long sword, heavy sword, bow, staff. A weapon reshapes the hand normals (damage, startup, recovery, reach) and is drawn in the fighter's hand (`drawWeapon` in `sprites.js`). The *short sword* profile is ready to use: `moves({...}, 'short')` + a new fighter entry.
+
+Add your own: new move fields `mana`, `heal`, `manaGain`, `tele`, `armor`/`armorFrom`, `proj.volley` are documented at the top of `classes.js`.
+
 ## Controls
 | | Keyboard | Touch |
 |---|---|---|
@@ -42,7 +58,7 @@ Gamepad is supported too.
 Key moves (all fighters): ↘+HP launcher · →+HP overhead · →+HK long kick · ↓+HK sweep · ↓+LK low.
 
 ## Files
-`config.js` constants · `characters.js` ALL move/frame data (edit here to balance or add fighters; `aura: 'fire'|'snow'` adds ambient particles) · `fighter.js` combat logic ·
+`config.js` constants · `characters.js` ALL move/frame data · `classes.js` class stats, weapons, mana spells + the 4 new fighters (edit here to balance or add fighters; `aura: 'fire'|'snow'` adds ambient particles) · `fighter.js` combat logic ·
 `match.js` rounds/hit resolution · `sprites.js` character art · `world.js` stages + effects · `audio.js` sounds · `ai.js` bot ·
 `input.js` controls · `main.js` UI/HUD · `rooms.js`/`server.js`/`net.js` online.
 

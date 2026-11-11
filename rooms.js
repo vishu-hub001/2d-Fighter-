@@ -1,5 +1,5 @@
 // Room logic + authoritative 60Hz match loop. No dependency on 'ws' (just needs sockets with send()).
-require('./config.js'); require('./characters.js'); require('./fighter.js'); require('./match.js');
+require('./config.js'); require('./characters.js'); require('./classes.js'); require('./fighter.js'); require('./match.js');
 const rooms = new Map();
 const blank = () => ({ l: 0, r: 0, u: 0, d: 0, b: 0, p: 0 });   // b = buttons held, p = buttons newly pressed since last tick
 

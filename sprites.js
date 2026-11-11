@@ -233,6 +233,7 @@
     drawLeg(ctxo, J, J.kF, J.fF, false);
     drawArm(ctxo, J.sh, J.eF, J.hF, false);
     if (H.front) H.front(ctxo);
+    if (d.weapon) drawWeapon(ctxo);
     ctx.restore();
     // world-space tips for trails
     const wx = p => f.x + f.facing * p[0] * sc * sx, wy = p => f.y + p[1] * sc * sy;
@@ -576,6 +577,146 @@
       }
     },
   };
+  // ------------------------------------------------------------------ CLASS LOOKS (classes.js): samurai / warlord / ranger / arcanist
+  LOOKS.samurai  = { arm: [27, 27], aw: [13, 11, 9], leg: { thigh: 'dark', shin: 'dark', foot: '#2a1a12' }, armCol: ['suit', 'suit', 'skin'], lw: [16, 12.5], torsoW: [34, 28], blade: 90 };
+  LOOKS.warlord  = { arm: [27, 27], aw: [15, 13.5, 12.5], leg: { thigh: 'dark', shin: 'suit', foot: 'dark' }, armCol: ['suit', 'suit', 'accent'], lw: [18, 14], torsoW: [40, 32], blade: 106 };
+  LOOKS.ranger   = { arm: [27, 27], aw: [11, 9.5, 8.5], leg: { thigh: 'dark', shin: 'suit', foot: '#3a2514' }, armCol: ['suit', 'skin', 'skin'], lw: [14.5, 11.5], torsoW: [28, 23] };
+  LOOKS.arcanist = { arm: [27, 27], aw: [12, 10, 9], leg: { thigh: 'dark', shin: 'dark', foot: '#2a2040' }, armCol: ['suit', 'suit', 'skin'], lw: [15, 12], torsoW: [28, 23] };
+  STANCE.samurai  = [-4, -66, .10, 0, 40, -116, 14, -100, 26, 0, -24, 0];     // blade up and forward
+  STANCE.warlord  = [-3, -64, .08, 0, 36, -112, 14, -104, 28, 0, -26, 0];     // wide, heavy guard
+  STANCE.ranger   = [-5, -66, .10, 0, 34, -104, 12, -102, 22, 0, -22, 0];     // bow arm out
+  STANCE.arcanist = [-4, -67, .08, 0, 28, -116, 12, -108, 18, 0, -20, 0];     // staff held high
+
+  HOOKS.samurai = {
+    back(c) { const { ctx, J } = c, h = J.hip; taper(ctx, [h[0] - 6, h[1] - 12], [h[0] - 36, h[1] + 24], 5.5, 4.5, '#2a1a12', true); taper(ctx, [h[0] - 6, h[1] - 12], [h[0] - 12, h[1] - 6], 6.5, 6, c.C('accent'), true); },   // scabbard
+    torso(c) {
+      const { ctx, C } = c, t = torsoShape(c, 34, 28, C('suit'), 3);
+      poly(ctx, [t.at(.98, 11), t.at(.98, -4), t.at(.5, 5)], C('#f1ece0'), false);                              // inner collar
+      poly(ctx, [t.at(.02, -15), t.at(.02, 15), t.at(.14, 15), t.at(.14, -15)], C('dark'));                     // obi sash
+      const k = t.at(.08, 9); ctx.fillStyle = C('accent'); ctx.fillRect(k[0] - 3, k[1] - 3, 6, 6);
+      const e = t.at(.62, -7); ctx.fillStyle = C('accent'); ctx.beginPath(); ctx.arc(e[0], e[1], 3.2, 0, 7); ctx.fill();   // clan crest
+    },
+    armDeco(c, s, e, h) { taper(c.ctx, along(e, h, .08), along(e, h, .5), 16, 13, c.C('dark'), true); },        // wide sleeve
+    legDeco(c, hip, k, f) { taper(c.ctx, along(hip, k, .08), along(k, f, .5), 22, 17, c.C('suit'), true); },    // hakama
+    head(c) {
+      const { C, pz, T, f } = c, ctx = headBase(c, C('skin'), true), sw = Math.sin(T * 5 + f.idx) * 2;
+      ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-12, 4); ctx.lineTo(-13.5, -6); ctx.bezierCurveTo(-12, -17, 6, -19, 12, -8); ctx.lineTo(10, -5); ctx.lineTo(4, -9); ctx.lineTo(-3, -4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-9, -16, 5.5, 4.5, -.3, 0, 7); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.stroke();   // top-knot
+      face(ctx, pz.face, { eye: '#2a1a12', brow: '#111' });
+      ctx.strokeStyle = C('accent'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-13, -6); ctx.lineTo(12.5, -8); ctx.stroke();      // headband
+      poly(ctx, [[-13, -6], [-24 + sw, -3], [-21 + sw, 3], [-12, -3]], C('accent'));
+      ctx.restore();
+    }
+  };
+
+  HOOKS.warlord = {
+    back(c) { cape(c, c.d.cape, '#4a1010', 58); },
+    torso(c) {
+      const { ctx, C } = c, t = torsoShape(c, 40, 32, C('suit'), 5);
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (const u of [.3, .64]) { const a = t.at(u, -14), b = t.at(u, 14); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); } ctx.stroke();   // plate seams
+      poly(ctx, [t.at(.02, -17), t.at(.02, 17), t.at(.13, 17), t.at(.13, -17)], C('dark'));
+      const bk = t.at(.075, 6); ctx.fillStyle = C('accent'); ctx.fillRect(bk[0] - 4, bk[1] - 4, 8, 8);
+      const em = t.at(.7, 4); ctx.fillStyle = C('accent'); ctx.beginPath(); ctx.arc(em[0], em[1], 4.5, 0, 7); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.stroke();
+    },
+    armDeco(c, s, e, h) { const { ctx } = c; ball(ctx, s, 12.5, c.C('dark')); ball(ctx, s, 8, c.C('accent')); taper(ctx, along(e, h, .1), along(e, h, .72), 15.5, 13.5, c.C('suit'), true); },   // pauldron + gauntlet
+    legDeco(c, hip, k, f) { const { ctx } = c; taper(ctx, along(k, f, .05), along(k, f, .85), 14.5, 12, c.C('suit'), true); ball(ctx, k, 8.5, c.C('accent')); },                          // greave + knee guard
+    head(c) {
+      const { C, T, f } = c, ctx = headBase(c, C('skin'), false), sw = Math.sin(T * 6 + f.idx) * 3;
+      poly(ctx, [[-4, -17], [-14 + sw, -30], [-26 + sw, -22 + sw * .4], [-16, -12]], C('#c0272d'));              // plume
+      ctx.fillStyle = C('suit'); ctx.beginPath(); ctx.ellipse(0, -1, 14.5, 15.5, 0, 0, 7); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.6; ctx.stroke();   // great helm
+      ctx.fillStyle = C('dark'); ctx.fillRect(-1, -6, 15, 5);                                                     // visor slit
+      ctx.fillStyle = f.flash > 0 ? '#fff' : '#ff6a3a'; ctx.fillRect(3, -5, 8, 2.6);
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(9, -1); ctx.lineTo(9, 13); ctx.moveTo(1, 3); ctx.lineTo(1, 14); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(-4, -8, 6, 4, -.5, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  HOOKS.ranger = {
+    back(c) {
+      const { ctx, J, C } = c, S = J.S; cape(c, c.d.cape, '#173022', 36);
+      taper(ctx, [S[0] - 6, S[1] + 4], [S[0] - 20, S[1] - 26], 8.5, 7.5, '#5a3a22', true);                      // quiver
+      ctx.strokeStyle = C('accent'); ctx.lineWidth = 2; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(S[0] - 20 + i * 3, S[1] - 27); ctx.lineTo(S[0] - 24 + i * 4, S[1] - 36); ctx.stroke(); }
+    },
+    torso(c) {
+      const { ctx, C } = c, t = torsoShape(c, 30, 24, C('suit'), 2);
+      poly(ctx, [t.at(.02, -13), t.at(.02, 13), t.at(.14, 13), t.at(.14, -13)], C('#5a3a22'));
+      const bk = t.at(.08, 0); ctx.fillStyle = C('accent'); ctx.fillRect(bk[0] - 3, bk[1] - 3, 6, 6);
+      ctx.strokeStyle = C('#5a3a22'); ctx.lineWidth = 3.2; const a = t.at(.96, -12), b = t.at(.12, 11); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();   // quiver strap
+    },
+    armDeco(c, s, e, h) { taper(c.ctx, along(e, h, .35), along(e, h, .9), 10.5, 9.5, c.C('#5a3a22'), true); },    // bracer
+    legDeco(c, hip, k, f) { taper(c.ctx, along(k, f, .5), along(k, f, .96), 12.5, 11.5, c.C('#5a3a22'), true); },  // boots
+    head(c) {
+      const { C, pz, T, f } = c, ctx = headBase(c, C('skin'), true), sw = Math.sin(T * 5 + f.idx) * 2.5;
+      taper(ctx, [-9, 0], [-24 + sw, 20 + sw], 5, 3.5, C('hair'), true);                                         // braid
+      ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-11, 5); ctx.lineTo(-12, -4); ctx.bezierCurveTo(-8, -12, 4, -13, 11, -6); ctx.lineTo(9, -4); ctx.lineTo(3, -7); ctx.lineTo(-3, -3); ctx.closePath(); ctx.fill();
+      face(ctx, pz.face, { eye: '#2f9a58', brow: '#7a3a14' });
+      ctx.fillStyle = C('suit'); ctx.beginPath(); ctx.moveTo(-15, 9); ctx.bezierCurveTo(-20, -18, 2, -26, 14, -9); ctx.lineTo(10, -6); ctx.quadraticCurveTo(0, -12, -6, -3); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.5; ctx.stroke();   // hood
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.ellipse(-3, -14, 6, 3, -.3, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  HOOKS.arcanist = {
+    back(c) { const { ctx, J, T, f, C } = c, h = J.hip, sw = Math.sin(T * 4 + f.idx) * 2.5; poly(ctx, [[h[0] - 4, h[1] - 34], [h[0] - 30 + sw, h[1] + 38], [h[0] - 4, h[1] + 42], [h[0] + 4, h[1] - 20]], C('dark')); },
+    torso(c) {
+      const { ctx, C, J, T, f } = c, t = torsoShape(c, 30, 26, C('suit'), 2), h = J.hip, sw = Math.sin(T * 4 + f.idx) * 2.5;
+      poly(ctx, [[h[0] - 14, h[1] - 6], [h[0] + 16, h[1] - 6], [h[0] + 24 + sw, h[1] + 34], [h[0] + 6, h[1] + 40 + sw * .4], [h[0] - 8, h[1] + 38], [h[0] - 22 - sw, h[1] + 32]], C('suit'));   // robe
+      ctx.strokeStyle = C('accent'); ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(h[0] - 22 - sw, h[1] + 32); ctx.lineTo(h[0] - 8, h[1] + 38); ctx.lineTo(h[0] + 6, h[1] + 40 + sw * .4); ctx.lineTo(h[0] + 24 + sw, h[1] + 34); ctx.stroke();
+      poly(ctx, [t.at(.02, -13), t.at(.02, 13), t.at(.13, 13), t.at(.13, -13)], C('accent'));
+      const e = t.at(.6, 4); ctx.fillStyle = C('accent'); ctx.beginPath();                                       // star emblem
+      for (let i = 0; i < 10; i++) { const r = i % 2 ? 2.6 : 6, a = -Math.PI / 2 + i * Math.PI / 5; ctx.lineTo(e[0] + Math.cos(a) * r, e[1] + Math.sin(a) * r); } ctx.closePath(); ctx.fill();
+    },
+    armDeco(c, s, e, h) { taper(c.ctx, along(e, h, .05), along(e, h, .65), 17, 12.5, c.C('suit'), true); taper(c.ctx, along(e, h, .6), along(e, h, .78), 13.5, 13, c.C('accent'), true); },   // wide sleeve + cuff
+    head(c) {
+      const { C, pz, T, f } = c, ctx = headBase(c, C('skin'), true), sw = Math.sin(T * 5 + f.idx) * 2;
+      ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-15, 22 + sw); ctx.lineTo(-6, 18); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.stroke();
+      face(ctx, pz.face, { eye: f.flash > 0 ? '#fff' : '#7cf3ff', brow: '#8a90b0' });
+      ctx.fillStyle = C('suit'); ctx.beginPath(); ctx.moveTo(-17, -9); ctx.quadraticCurveTo(-4, -4, 17, -9); ctx.lineTo(10, -14); ctx.quadraticCurveTo(6, -30, -4 + sw, -46 + sw * .5); ctx.quadraticCurveTo(-8, -26, -10, -14); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.5; ctx.stroke();   // wizard hat
+      ctx.strokeStyle = C('accent'); ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-10.5, -13); ctx.quadraticCurveTo(0, -10, 10.5, -13); ctx.stroke();
+      ctx.fillStyle = C('accent'); ctx.beginPath(); ctx.arc(-4 + sw, -46 + sw * .5, 2.4, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  // ------------------------------------------------------------------ HELD WEAPONS (d.weapon): drawn on the front hand, pointing along the forearm
+  function drawWeapon(c) {
+    const { ctx, J, d, f, T } = c, wp = d.weapon, h = J.hF, e = J.eF, fl = f.flash > 0;
+    let dx = h[0] - e[0], dy = h[1] - e[1]; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    const nx = -dy, ny = dx, P = (u, v) => [h[0] + dx * u + nx * v, h[1] + dy * u + ny * v];
+    const steel = fl ? '#fff' : '#e4ecf5', steelD = fl ? '#fff' : '#9fb0c4', wood = fl ? '#fff' : '#6b4526', gold = fl ? '#fff' : (d.accent || '#d9a93a');
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const blade = (len, w0, w1, curve, u0) => {
+      poly(ctx, [P(u0, -w0 / 2), P(len * .9, -w1 / 2 + curve * .6), P(len + 5, curve), P(len * .9, w1 / 2 + curve * .6), P(u0, w0 / 2)], steel);
+      const a = P(u0 + 4, w0 * .2), b = P(len * .9, w1 * .15 + curve * .6); ctx.strokeStyle = steelD; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    };
+    if (wp === 'long' || wp === 'short' || wp === 'heavy') {
+      const heavy = wp === 'heavy', gl = heavy ? 15 : wp === 'long' ? 8 : 6, g0 = heavy ? 10 : 7;
+      taper(ctx, P(heavy ? -20 : -16, 0), P(g0, 0), 4.2, 4.2, wood, true);                                       // grip
+      if (wp === 'long') blade(90, 5.5, 3.6, 5, 8); else if (wp === 'short') blade(46, 7, 5, 1, 6);
+      else { blade(106, 14, 10, 0, 10); ctx.strokeStyle = steelD; ctx.lineWidth = 2.4; const a = P(16, 0), b = P(94, 0); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+      taper(ctx, P(g0, -gl), P(g0, gl), heavy ? 5 : 3.4, heavy ? 5 : 3.4, gold, true);                           // cross-guard
+      ball(ctx, P(heavy ? -22 : -17, 0), heavy ? 4.2 : 3.2, gold);                                                // pommel
+    } else if (wp === 'bow') {
+      const tl = .1, ux = Math.sin(tl), uy = -Math.cos(tl), fx = Math.cos(tl), fy = Math.sin(tl);
+      const B = (s, b) => [h[0] + ux * s * 40 + fx * b, h[1] + uy * s * 40 + fy * b];
+      const top = B(1, -8), bot = B(-1, -8), ctl = B(0, 34);
+      const pull = f.st === 'atk' && f.atk && f.atk.m && f.atk.m.proj && f.atk.t <= f.atk.m.st + 3, nock = pull ? B(0, -30) : B(0, -8);
+      ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.quadraticCurveTo(ctl[0], ctl[1], bot[0], bot[1]); ctx.strokeStyle = OUT; ctx.lineWidth = 6; ctx.stroke(); ctx.strokeStyle = fl ? '#fff' : '#8a5a2b'; ctx.lineWidth = 3.6; ctx.stroke();
+      ctx.strokeStyle = fl ? '#fff' : '#f4f0d8'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(nock[0], nock[1]); ctx.lineTo(bot[0], bot[1]); ctx.stroke();
+      if (pull) { const tip = [nock[0] + fx * 46, nock[1] + fy * 46]; ctx.strokeStyle = fl ? '#fff' : '#a77a4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(nock[0], nock[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke(); ctx.fillStyle = steel; ctx.beginPath(); ctx.arc(tip[0], tip[1], 2.6, 0, 7); ctx.fill(); }
+    } else if (wp === 'staff') {
+      const top = P(84, 0), mf = d.mana ? clamp(f.mana / d.mana, 0, 1) : 1, col = fl ? '#fff' : (d.accent || '#7cf3ff');
+      taper(ctx, P(-26, 0), top, 3.6, 3.6, wood, true); ball(ctx, P(68, 0), 3.4, gold);
+      taper(ctx, P(76, -3), P(93, -10), 2.6, 1.8, gold, true); taper(ctx, P(76, 3), P(93, 10), 2.6, 1.8, gold, true);   // prongs
+      const R = 11 + Math.sin(T * 6) * 1.5; ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(top[0], top[1], 1, top[0], top[1], R * 2.2); g.addColorStop(0, rgba(col, .75 * (.35 + .65 * mf))); g.addColorStop(1, rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(top[0], top[1], R * 2.2, 0, 7); ctx.fill(); ctx.restore();   // glow = how much mana is left
+      ball(ctx, top, 6.5, col); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(top[0] - 1.6, top[1] - 1.6, 2.2, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // flowing cape (Thunder Lord)
   function cape(c, col, colDark, len) {
     const { ctx, J, T, f, C } = c; if (!col) return;

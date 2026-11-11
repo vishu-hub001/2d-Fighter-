@@ -9,7 +9,7 @@
     constructor(def, x, facing, idx) {
       this.def = def; this.idx = idx || 0; this.M = null; this.opp = null;
       this.x = x; this.y = G.GROUND; this.facing = facing; this.vx = 0; this.vy = 0;
-      this.hp = def.hp; this.maxHp = def.hp; this.meter = 0;
+      this.hp = def.hp; this.maxHp = def.hp; this.meter = 0; this.mana = def.mana || 0;
       this.st = 'stand'; this.sf = 0; this.atk = null; this.stun = 0; this.lag = 0; this.inv = 0; this.flash = 0;
       this.guard = 0; this.wd = 0; this.rage = 0; this.crouchHit = 0; this.blockCrouch = 0; this.buf = [];
       this.juggle = 0; this.gravMul = 1; this.noJuggle = false; this.bounced = false; this.tb = 0;
@@ -89,6 +89,8 @@
       if (this.cmbT > 0) this.cmbT--;
       this.sf++; this.wd = 0; this.guard = 0;
       this.rage = this.hp > 0 && this.hp < this.maxHp * 0.25 ? 1 : 0;
+      // mana (casters only): slow regen, 2.5x faster while crouching
+      if (d.mana && this.hp > 0) this.mana = Math.min(d.mana, this.mana + (d.manaRegen || 0.1) * (this.st === 'crouch' ? 2.5 : 1));
       const bd = this.curDir();
       switch (this.st) {
         case 'stand': case 'crouch': this.doActionable(opp, bd); break;
@@ -220,12 +222,14 @@
     startMove(id) {
       const m = this.def.moves[id]; if (!m) return false;
       if (m.proj && !m.super && this.M && this.M.shotsOf(this.idx) > 0) return false;
+      if (m.mana && this.mana < m.mana) { this.ev({ t: 'nomana', i: this.idx, x: this.x }); return false; }
       if (m.super) {
         if (this.meter < G.METER_MAX) return false;
         this.meter = 0; this.ev({ t: 'super', i: this.idx, n: m.name, x: this.x });
         if (this.M) this.M.hitstop = Math.max(this.M.hitstop, 44);
       }
       if (this.opp && this.onGround) this.facing = this.opp.x >= this.x ? 1 : -1;
+      if (m.mana) this.mana -= m.mana;
       this.atk = { id, m, t: 0, hit: false, conn: false, n: 0, rearm: 0, grab: null };
       this.st = 'atk'; this.sf = 0;
       if (this.onGround) this.vx = 0;
@@ -246,6 +250,13 @@
       a.t++;
       if (m.mvf) for (const k of m.mvf) if (k.t === a.t) { this.vx = this.facing * k.vx; if (k.vy !== undefined) this.vy = k.vy; if (k.vy !== undefined && this.onGround) this.y -= 1; }
       if (m.inv && a.t >= m.inv[0] && a.t <= m.inv[1]) this.inv = Math.max(this.inv, 1);
+      if (m.heal && a.t === m.st) { this.hp = Math.min(this.maxHp, this.hp + m.heal); this.ev({ t: 'heal', i: this.idx, x: this.x, c: m.fxColor || '#7dff9a' }); }
+      if (m.tele && a.t === m.tele.t && this.opp) {
+        const ox = this.x, o = this.opp; let nx = o.x + this.facing * m.tele.d;
+        if (nx < BOUND || nx > G.STAGE_W - BOUND) nx = o.x - this.facing * m.tele.d; else this.facing = -this.facing;   // wall behind them: blink to the near side instead
+        this.x = Math.max(BOUND, Math.min(G.STAGE_W - BOUND, nx)); this.vx = 0; this.ev({ t: 'blink', i: this.idx, x: this.x, ox });
+      }
+      if (m.manaGain && a.t === m.st) { this.mana = Math.min(this.def.mana || 0, this.mana + m.manaGain); this.ev({ t: 'heal', i: this.idx, x: this.x, c: '#6fb4ff' }); }
       if (!m.air && this.onGround) this.vx *= m.fric !== undefined ? m.fric : 0.82;
       if (a.t === m.st + 1 && !m.proj && !m.throw) this.ev({ t: 'swing', i: this.idx, x: this.x, d: this.facing, p: m.pose, s: m.snd });
       if (m.proj && a.t === m.st) { this.M.spawnShot(this, m); this.ev({ t: 'cast', i: this.idx, x: this.x, d: this.facing, c: m.proj.color, f: m.fxName || 'charge' }); }
@@ -275,7 +286,7 @@
       if (g.t >= g.win) { v.takeThrow(this, m); a.grab = null; a.t = m.st + m.ac; }
     }
     takeThrow(att, m) {
-      const dmg = Math.round(m.dmg * (att.rage ? 1.15 : 1));
+      const dmg = Math.round(m.dmg * ((att.def.power || 1) / (this.def.defense || 1)) * (att.rage ? 1.15 : 1));
       this.hp = Math.max(0, this.hp - dmg);
       this.inCombo = true; this.comboOwner = att; this.comboHits = 3; att.cmbN = 1; att.cmbDmg = dmg;
       this.st = 'launch'; this.sf = 0; this.juggle = 0; this.gravMul = 1; this.bounced = false; this.noJuggle = true; this.tb = 0;
@@ -291,9 +302,10 @@
     // ------------------------------------------------------------ being hit
     receive(att, o) {
       const m = o.m, dir = o.dir;
+      const K = (att.def.power || 1) / (this.def.defense || 1);        // class stats: attacker power / defender defense
       if (this.atk && this.atk.grab) this.atk.grab.vic.release();
       if (o.blocked) {
-        const chip = Math.floor(o.dmg * (m.chip || 0)); if (chip) this.hp = Math.max(1, this.hp - chip);
+        const chip = Math.floor(o.dmg * (m.chip || 0) * K); if (chip) this.hp = Math.max(1, this.hp - chip);
         const stun = Math.max(6, o.kind === 'shot' ? o.stunB : o.rem + o.advB);
         this.blockCrouch = this.st === 'crouch' || (this.st === 'block' && this.blockCrouch) ? 1 : 0;
         this.st = 'block'; this.sf = 0; this.stun = stun; this.atk = null;
@@ -304,8 +316,16 @@
       const wasAtk = this.st === 'atk', airborne = this.y < G.GROUND - 1;
       const crouching = this.st === 'crouch' || (wasAtk && this.atk && this.atk.m.stance === 'crouch');
       const sc = m.noScale ? 1 : Math.max(0.35, 1 - 0.12 * this.comboHits);
-      const dmg = Math.round(o.dmg * sc * (att.rage ? 1.15 : 1) * (o.ctr ? 1.25 : 1));
+      const dmg = Math.round(o.dmg * sc * K * (att.rage ? 1.15 : 1) * (o.ctr ? 1.25 : 1));
+      // POISE (heavy weapons): armoured frames soak the hit at reduced damage and keep swinging
+      const am = wasAtk && this.atk && this.atk.m.armor, red = am ? Math.round(o.dmg * K * (att.rage ? 1.15 : 1) * am) : 0;
+      if (am && !this.atk.m.throw && this.atk.t >= (this.atk.m.armorFrom || 1) && this.atk.t <= this.atk.m.st + this.atk.m.ac && !m.throw && this.hp - red > 0) {
+        this.hp -= red; this.flash = 4; this.meter = Math.min(G.METER_MAX, this.meter + red / 8); if (!m.super) att.meter = Math.min(G.METER_MAX, att.meter + red / 12);
+        this.ev({ t: 'poise', x: this.x, i: this.idx });
+        return { r: 'hit', dmg: red, ko: false, fx: 'hit' };
+      }
       this.hp = Math.max(0, this.hp - dmg);
+      if (att.def.mana && att.def.manaOnHit) att.mana = Math.min(att.def.mana, att.mana + dmg * att.def.manaOnHit);
       if (this.inCombo && this.comboOwner === att) { att.cmbN++; att.cmbDmg += dmg; }
       else { att.cmbN = 1; att.cmbDmg = dmg; this.inCombo = true; this.comboOwner = att; this.comboHits = 0; }
       att.cmbT = 0; this.comboHits++;
@@ -335,12 +355,12 @@
     // ------------------------------------------------------------ network helpers
     serialize() {
       const a = this.atk;
-      return { x: +this.x.toFixed(1), y: +this.y.toFixed(1), f: this.facing, hp: this.hp, mt: +this.meter.toFixed(1), st: this.st, sf: this.sf,
+      return { x: +this.x.toFixed(1), y: +this.y.toFixed(1), f: this.facing, hp: this.hp, mt: +this.meter.toFixed(1), mn: Math.round(this.mana), st: this.st, sf: this.sf,
         mv: a ? a.id : 0, at: a ? a.t : 0, gt: a && a.grab ? a.grab.t : -1, g: this.guard, wd: this.wd, fl: this.flash, rg: this.rage, vy: +this.vy.toFixed(1),
         cr: this.st === 'block' ? this.blockCrouch : this.crouchHit, tb: this.tb, iv: this.inv > 0 ? 1 : 0, cn: this.cmbN, cd: this.cmbDmg, ct: this.cmbT, jg: this.juggle };
     }
     applyState(s) {
-      this.x = s.x; this.y = s.y; this.facing = s.f; this.hp = s.hp; this.meter = s.mt; this.st = s.st; this.sf = s.sf;
+      this.x = s.x; this.y = s.y; this.facing = s.f; this.hp = s.hp; this.meter = s.mt; this.mana = s.mn || 0; this.st = s.st; this.sf = s.sf;
       this.atk = s.mv ? { id: s.mv, t: s.at, m: this.def.moves[s.mv], grabT: s.gt } : null;
       this.guard = s.g; this.wd = s.wd; this.flash = s.fl; this.rage = s.rg; this.vy = s.vy; this.crouchHit = s.cr; this.tb = s.tb; this.inv = s.iv;
       this.cmbN = s.cn; this.cmbDmg = s.cd; this.cmbT = s.ct; this.juggle = s.jg; this.cl = s.cl;

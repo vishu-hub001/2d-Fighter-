@@ -16,8 +16,10 @@ Game.Match = class {
   }
   shotsOf(i) { let n = 0; for (const s of this.shots) if (s.o === i && s.p.n === undefined) n++; return n; }
   spawnShot(f, m) {
-    const p = m.proj;
-    this.shots.push({ id: ++this.sid, x: f.x + f.facing * 40, y: p.y, vx: f.facing * p.speed, o: f.idx, p, life: p.life, n: p.n || 1, cd: 0, d: f.facing, vy: p.vy || 0, g: p.g || 0, bn: 0 });
+    const p = m.proj, cnt = p.volley || 1;
+    for (let i = 0; i < cnt; i++) {          // volley = several arrows fanned out (each steeper + faster than the last)
+      this.shots.push({ id: ++this.sid, x: f.x + f.facing * 40, y: p.y, vx: f.facing * (p.speed + i * (p.vsp || 0)), o: f.idx, p, life: p.life, n: p.n || 1, cd: 0, d: f.facing, vy: (p.vy || 0) + i * (p.vvy || 0), g: p.g || 0, bn: 0 });
+    }
     this.events.push({ t: 'shot', x: f.x + f.facing * 40, y: Game.GROUND - p.y, i: f.idx, c: p.color });
   }
   techBreak(a, b) {
@@ -178,7 +180,7 @@ Game.Match = class {
   serialize() {
     const f = this.f.map((x, i) => { const s = x.serialize(); s.cl = this.f[1 - i].inCombo ? 1 : 0; return s; });
     return { ph: this.ph, t: this.timer, i: this.intro, e: this.endT, w: this.wins, m: this.msg, sub: this.sub || '', win: this.win, rd: this.round, hs: this.hitstop, sl: this.slow, sg: this.stage,
-      f, s: this.shots.map(s => ({ id: s.id, x: +s.x.toFixed(1), y: s.y, c: s.p.color, st: s.p.style, w: s.p.w, h: s.p.h, d: s.d })), ev: this.events };
+      f, s: this.shots.map(s => ({ id: s.id, x: +s.x.toFixed(1), y: +s.y.toFixed(1), c: s.p.color, st: s.p.style, w: s.p.w, h: s.p.h, d: s.d, vy: +(s.vy || 0).toFixed(1), sp: s.p.speed })), ev: this.events };
   }
 };
 if (typeof module !== 'undefined') module.exports = Game.Match;
