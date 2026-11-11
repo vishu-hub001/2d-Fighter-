@@ -1,8 +1,7 @@
 // Room logic + authoritative 60Hz match loop. No dependency on 'ws' (just needs sockets with send()).
 require('./config.js'); require('./characters.js'); require('./fighter.js'); require('./match.js');
 const rooms = new Map();
-const blank = () => ({ left: false, right: false, up: false, punch: false, kick: false, special: false });
-const EDGE = ['punch', 'kick', 'special'];
+const blank = () => ({ l: 0, r: 0, u: 0, d: 0, b: 0, p: 0 });   // b = buttons held, p = buttons newly pressed since last tick
 
 function makeCode() {
   const A = 'ABCDEFGHJKMNPQRSTUVWXYZ'; let c;
@@ -39,8 +38,9 @@ function handle(ws, m) {
         bcast(r, { t: 'start', c: r.picks });
       }
     } else if (t === 'in' && r.match) {
-      const i = r.inp[s]; i.left = !!m.l; i.right = !!m.r; i.up = !!m.u;
-      if (m.p) i.punch = true; if (m.k) i.kick = true; if (m.s) i.special = true;
+      const i = r.inp[s], k = m.k | 0, b = (m.b | 0) & 127;
+      i.l = k & 1 ? 1 : 0; i.r = k & 2 ? 1 : 0; i.u = k & 4 ? 1 : 0; i.d = k & 8 ? 1 : 0;
+      i.p |= b & ~i.b; i.b = b;
     } else if (t === 'rematch' && r.match && r.match.ph === 'matchEnd') {
       r.rematch[s] = true;
       if (r.rematch[0] && r.rematch[1]) { r.match = null; r.picks = [null, null]; r.rematch = [false, false]; bcast(r, { t: 'joined' }); }
@@ -52,7 +52,7 @@ function tick() {
   for (const r of rooms.values()) {
     if (!r.match) continue;
     r.match.step(r.inp[0], r.inp[1]);
-    r.inp.forEach(i => EDGE.forEach(k => i[k] = false));
+    r.inp.forEach(i => { i.p = 0; });
     bcast(r, { t: 's', s: r.match.serialize() });
   }
 }

@@ -10,15 +10,11 @@
 <div id="wrap">
   <canvas id="game"></canvas>
   <div id="controls">
-    <div class="pad left">
-      <button data-key="left">◀</button>
-      <button data-key="up">▲</button>
-      <button data-key="right">▶</button>
-    </div>
-    <div class="pad right">
-      <button data-key="punch">👊</button>
-      <button data-key="kick">🦵</button>
-      <button data-key="special">⚡</button>
+    <div id="dpad"><i class="a u">▲</i><i class="a d">▼</i><i class="a l">◀</i><i class="a r">▶</i><b></b></div>
+    <div id="btns">
+      <button data-b="lp" class="p">LP</button><button data-b="hp" class="p">HP</button><button data-b="sp" class="s">SP</button>
+      <button data-b="lk" class="k">LK</button><button data-b="hk" class="k">HK</button><button data-b="th" class="g">GRAB</button>
+      <button data-b="su" class="su" id="b-su">SUPER</button>
     </div>
   </div>
   <div id="rotate">Rotate your phone to landscape 📱↻</div>
@@ -29,7 +25,10 @@
 <script src="match.js"></script>
 <script src="net.js"></script>
 <script src="ai.js"></script>
+<script src="audio.js"></script>
 <script src="input.js"></script>
+<script src="sprites.js"></script>
+<script src="world.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
