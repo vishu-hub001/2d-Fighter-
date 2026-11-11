@@ -216,5 +216,44 @@
       }), cmds: STD, spMap: MAP }
   );
 
+  // =====================================================================
+  G.CHARACTERS.push(
+    // ---------- BLAZE: fire monk, rushdown pressure + low fire mix-ups ----------
+    { id: 'blaze', name: 'BLAZE', look: 'monk', title: 'Fire Monk', aura: 'fire',
+      skin: '#d9a273', suit: '#b3261e', dark: '#2c1a16', accent: '#ffd23f', hair: '#ff8a1a', cape: null,
+      hp: 1010, walkF: 3.4, walkB: 2.7, jumpV: 15.8, jumpX: 4.5, w: 46, scale: 1.04,
+      dashF: { dist: 125, frames: 16 }, dashB: { dist: 95, frames: 18 },
+      moves: moves({
+        lp: { dmg: 42, st: 5 }, lp2: { chain: { hp: 'hp3', hk: 'hk', lk: 'lk3' } },
+        hp: { dmg: 80, st: 9 },
+        hp3: { pose: 'cross', name: 'Flame Palm', lvl: 'm', dmg: 92, st: 10, ac: 3, rc: 21, adv: -2, advB: -11, hit: { x: 12, y: 60, w: 84, h: 56 }, push: 8, pushB: 6, hs: 12, fx: 'knock', launch: 7, kb: 6, snd: 'p3', mvf: [{ t: 8, vx: 3 }] },
+        sp1: SHOT('Fireball', 'castfwd', 13, 22, { speed: 9.5, dmg: 75, w: 38, h: 36, color: '#ff9a2f', style: 'flame', y: 88, stunH: 20, stunB: 12, life: 90 }, { fxName: 'charge' }),
+        sp2: DP('Dragon Flame', 118),
+        sp3: RUSH('Blazing Rush', 'lunge', 92, 14, 7, 20, 14, { hit: { x: 10, y: 50, w: 84, h: 70 }, adv: 0 }),
+        // low fireball: forces a crouch-block, sets up the overhead
+        sp4: SHOT('Ground Flame', 'castfwd', 16, 26, { speed: 7, dmg: 70, w: 44, h: 30, color: '#ff6a1a', style: 'flame', y: 20, stunH: 22, stunB: 14, life: 100, fx: 'knock', launch: 7, kb: 5, hs: 10, lvl: 'l' }, { fxName: 'quake' }),
+        sp5: X({ pose: 'roundhouse', name: 'Inferno Kicks', st: 10, ac: 12, rc: 24, dmg: 55, hit: { x: 10, y: 60, w: 92, h: 60 }, fx: 'launch', launch: 10, kb: 3, multi: { n: 3, gap: 4 }, mvf: [{ t: 8, vx: 5 }] }),
+        super: MSUPER('PHOENIX FURY', 'superdash', 48, 18)
+      }), cmds: STD, spMap: MAP },
+
+    // ---------- FROST: ice mage, fast zoner with arcing snow bombs ----------
+    { id: 'frost', name: 'FROST', look: 'frost', title: 'Ice Mage', aura: 'snow',
+      skin: '#f4d8c8', suit: '#d4f1ff', dark: '#3a5ca8', accent: '#6fe3ff', hair: '#dfe6ff', cape: null,
+      hp: 960, walkF: 3.3, walkB: 2.7, jumpV: 16, jumpX: 4.6, w: 40, scale: 0.99,
+      dashF: { dist: 135, frames: 16 }, dashB: { dist: 105, frames: 17 },
+      moves: moves({
+        lp: { dmg: 38, st: 5 }, lp2: { chain: { hp: 'hp3', hk: 'hk', lk: 'lk3' } },
+        hp3: { pose: 'cross', name: 'Ice Palm', lvl: 'm', dmg: 90, st: 10, ac: 3, rc: 20, adv: -2, advB: -11, hit: { x: 12, y: 70, w: 82, h: 50 }, push: 8, pushB: 6, hs: 11, fx: 'knock', launch: 7, kb: 6, snd: 'p3' },
+        hk: { hit: { x: 10, y: 92, w: 102, h: 28 } },
+        sp1: SHOT('Ice Shard', 'castfwd', 10, 18, { speed: 14, dmg: 55, w: 34, h: 18, color: '#9be9ff', style: 'shard', y: 92, stunH: 18, stunB: 10, life: 70, hs: 7 }, { fxName: 'puff' }),
+        sp2: DP('Glacier Rise', 112),
+        sp3: RUSH('Ice Slide', 'clow', 72, 11, 10, 20, 13, { lvl: 'l', hit: { x: 10, y: 0, w: 86, h: 34 }, launch: 6, kb: 5, stance: 'crouch' }),
+        // arcing snow bomb: lobs over a crouching opponent
+        sp4: SHOT('Snow Bomb', 'throwkunai', 14, 26, { speed: 7, dmg: 82, w: 38, h: 38, color: '#bfeaff', style: 'snow', y: 140, vy: 3, g: 0.35, stunH: 24, stunB: 14, life: 90, fx: 'knock', launch: 8, kb: 5, hs: 10 }),
+        sp5: X({ pose: 'spinkick', name: 'Crystal Spin', st: 11, ac: 5, rc: 22, dmg: 88, hit: { x: 10, y: 50, w: 104, h: 55 }, fx: 'launch', launch: 10, kb: 3, hitRecov: 8, mvf: [{ t: 9, vx: 4 }] }),
+        super: BEAM('ABSOLUTE ZERO', 'superbeam', '#9be9ff', 88)
+      }), cmds: STD, spMap: MAP }
+  );
+
   G.STAGES = ['dojo', 'neon', 'temple'];
 })();

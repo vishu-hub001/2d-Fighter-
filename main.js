@@ -8,16 +8,18 @@
   const setCtl = on => controls.style.display = on ? 'flex' : 'none'; setCtl(false);
 
   let screen = 'menu', mode = 'bot', slot = 0, code = '', picked = -1, notice = '', match = null, view = null, fighters = null, ai = G.AI.mk(), lvl = 'normal';
-  let lag = [1, 1], lastRound = 0, tick = 0, shown = [0, 0], fightT = 0;
+  let lag = [1, 1], lastRound = 0, tick = 0, shown = [0, 0], fightT = 0, pop = [0, 0], prevMt = [0, 0], prevCn = [0, 0], prevPh = '', musicStage = -1;
   const previews = G.CHARACTERS.map(c => new G.Fighter(c, 0, 1));
-  const GAP = N > 5 ? 8 : 16, CW = Math.min(172, (W - 40 - (N - 1) * GAP) / N), cardX = i => (W - (N * CW + (N - 1) * GAP)) / 2 + i * (CW + GAP);
+  const GAP = N > 8 ? 6 : N > 5 ? 8 : 16, CW = Math.min(172, (W - 24 - (N - 1) * GAP) / N), cardX = i => (W - (N * CW + (N - 1) * GAP)) / 2 + i * (CW + GAP);
   const MENU = [{ label: 'PLAY VS BOT', a: 'bot' }, { label: 'TRAINING', a: 'train' }, { label: 'CREATE ROOM', a: 'create' }, { label: 'JOIN ROOM', a: 'join' }, { label: 'HOW TO PLAY', a: 'how' }];
   const BACK = { x: 10, y: 10, w: 80, h: 32 }, mbY = i => 112 + i * 54;
   const inR = (x, y, r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
+  const spk = () => screen === 'fight' ? { x: W - 44, y: 54, w: 38, h: 28 } : { x: W - 50, y: 8, w: 40, h: 30 };
+  addEventListener('keydown', e => { if (e.key === 'm' || e.key === 'M') A.toggle(); });
 
   // ------------------------------------------------------------ flow
-  function toMenu(msg) { G.Net.close(); screen = 'menu'; notice = msg || ''; match = null; view = null; setCtl(false); Wd.reset(); }
-  function initFighters(c) { fighters = c.map((ci, k) => new G.Fighter(G.CHARACTERS[ci], k ? 700 : 600, k ? -1 : 1, k)); lag = [1, 1]; lastRound = 0; Wd.reset(); }
+  function toMenu(msg) { G.Net.close(); A.musicStop(); musicStage = -1; screen = 'menu'; notice = msg || ''; match = null; view = null; setCtl(false); Wd.reset(); }
+  function initFighters(c) { musicStage = -1; prevMt = [0, 0]; prevCn = [0, 0]; prevPh = ''; fighters = c.map((ci, k) => new G.Fighter(G.CHARACTERS[ci], k ? 700 : 600, k ? -1 : 1, k)); lag = [1, 1]; lastRound = 0; Wd.reset(); }
   function startLocal(i) {
     slot = 0; const foe = (i + 1 + Math.floor(Math.random() * (N - 1))) % N;
     match = new G.Match(i, foe, { training: mode === 'train' }); ai = G.AI.mk(); ai.lvl = lvl; if (mode === 'train') ai.mode = 'dummy';
@@ -49,6 +51,7 @@
   cv.addEventListener('pointerdown', e => {
     A.init();
     const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    if ((screen === 'fight' || screen === 'menu' || screen === 'select') && inR(x, y, spk())) { A.toggle(); return; }
     if (screen === 'menu') {
       MENU.forEach((b, i) => { if (inR(x, y, { x: 250, y: mbY(i), w: 300, h: 46 })) { A.play('ui');
         if (b.a === 'bot' || b.a === 'train') { mode = b.a; notice = ''; screen = 'select'; }
@@ -82,7 +85,16 @@
     if (!view) return;
     view.f.forEach((s, i) => fighters[i].applyState(s));
     const frozen = view.hs > 0 || (view.i > 0 && view.ph === 'fight' && false);
-    Wd.update(frozen);
+    Wd.update(frozen); if (!frozen) Wd.ambient(fighters);
+    for (let i = 0; i < 2; i++) { const f = view.f[i];
+      if (f.mt >= 100 && prevMt[i] < 100 && view.i === 0 && view.ph === 'fight') { A.play('ready'); Wd.burstAt(fighters[i].x, fighters[i].y - 70, fighters[i].def.accent); }
+      if (f.cn >= 2 && f.cn > prevCn[i]) A.play('combo', f.cn);
+      prevMt[i] = f.mt; prevCn[i] = f.cn; }
+    if (musicStage !== (view.sg || 0)) { musicStage = view.sg || 0; A.music(musicStage); }
+    const hot = view.f.some((f, i) => f.hp > 0 && f.hp / fighters[i].maxHp < .25) || (mode !== 'train' && view.t < 600 && view.ph === 'fight') || view.f.some(f => f.cn >= 5);
+    A.intensity(hot); A.duck(view.ph === 'matchEnd');
+    if (view.ph === 'matchEnd' && prevPh !== 'matchEnd') { if (mode === 'online' ? view.win === slot : view.win === 0) { Wd.celebrate(); A.play('win'); } else A.play('ko'); }
+    prevPh = view.ph;
     if (view.i > 160) { lag = [1, 1]; Wd.updateCam(fighters, true); } else Wd.updateCam(fighters);
     for (let i = 0; i < 2; i++) { const f = view.f[i], p = f.hp / fighters[i].maxHp; lag[i] = lag[i] > p ? Math.max(p, lag[i] - .004 - (lag[i] - p) * .03) : p; }
     if (view.ph === 'fight' && view.i === 0) fightT++; else fightT = 0;
@@ -91,6 +103,7 @@
 
   // ------------------------------------------------------------ drawing helpers
   function txt(s, x, y, size, col, align, stroke) { ctx.font = '900 ' + size + 'px system-ui,sans-serif'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'alphabetic'; if (stroke !== false) { ctx.lineWidth = Math.max(3, size / 6); ctx.strokeStyle = '#000'; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y); } ctx.fillStyle = col || '#fff'; ctx.fillText(s, x, y); }
+  function fit(s, x, y, maxW, size, col, align, stroke) { let z = size; ctx.font = '900 ' + z + 'px system-ui,sans-serif'; while (z > 6 && ctx.measureText(s).width > maxW) { z -= .5; ctx.font = '900 ' + z + 'px system-ui,sans-serif'; } txt(s, x, y, z, col, align, stroke); }
   function btn(x, y, w, h, label, active) {
     const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, active ? '#ffcf4a' : '#39406b'); g.addColorStop(1, active ? '#e08a1a' : '#1f2342'); ctx.fillStyle = g;
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, 10) : ctx.rect(x, y, w, h); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = active ? '#fff3b0' : 'rgba(255,255,255,.35)'; ctx.stroke();
@@ -99,6 +112,7 @@
   function bgMenu(t) {
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120b2e'); g.addColorStop(1, '#3a1646'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     for (let i = 0; i < 40; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (.15 + .25 * Math.abs(Math.sin(t + i))) + ')'; ctx.fillRect((i * 97) % W, (i * 53) % 300, 2, 2); }
+    for (let i = 0; i < 26; i++) { const x = (i * 83 + Math.sin(t * .8 + i) * 18) % W, y = H - ((t * (22 + (i % 4) * 9) + i * 47) % H); ctx.fillStyle = 'rgba(255,' + (140 + (i % 3) * 40) + ',60,' + (.18 + .25 * Math.abs(Math.sin(t + i))) + ')'; ctx.beginPath(); ctx.arc(x, y, 1.5 + (i % 3), 0, 7); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,90,60,.12)'; ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 320); ctx.lineTo(200, 260); ctx.lineTo(420, 330); ctx.lineTo(640, 250); ctx.lineTo(W, 320); ctx.lineTo(W, H); ctx.fill();
   }
 
@@ -124,14 +138,25 @@
     if (full) txt('SUPER READY', side === 0 ? mx : mx + mw, 81, 11, '#ffb04a', side === 0 ? 'left' : 'right');
     if (s.rg) txt('RAGE', side === 0 ? 372 : 428, 96, 12, '#ff4040', side === 0 ? 'right' : 'left');
   }
+  function speaker() {
+    const r = spk(), on = A.on, cx = r.x + r.w / 2, cy = r.y + r.h / 2; ctx.save(); ctx.globalAlpha = .85; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 9, cy - 4); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx + 2, cy - 9); ctx.lineTo(cx + 2, cy + 9); ctx.lineTo(cx - 4, cy + 4); ctx.lineTo(cx - 9, cy + 4); ctx.closePath(); ctx.fill();
+    if (on) { ctx.beginPath(); ctx.arc(cx + 2, cy, 6, -.9, .9); ctx.stroke(); ctx.beginPath(); ctx.arc(cx + 2, cy, 11, -.9, .9); ctx.stroke(); } else { ctx.strokeStyle = '#ff6b6b'; ctx.beginPath(); ctx.moveTo(cx + 6, cy - 6); ctx.lineTo(cx + 15, cy + 6); ctx.moveTo(cx + 15, cy - 6); ctx.lineTo(cx + 6, cy + 6); ctx.stroke(); }
+    ctx.restore();
+  }
   function hud() {
     const names = fighters.map(f => f.def.name);
     bar(0, view.f[0].hp / fighters[0].maxHp, lag[0], names[0], fighters[0].def, 0); bar(1, view.f[1].hp / fighters[1].maxHp, lag[1], names[1], fighters[1].def, 1);
     ctx.fillStyle = '#10142e'; ctx.beginPath(); ctx.arc(W / 2, 32, 25, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
     const sec = Math.ceil(view.t / 60); txt(mode === 'train' ? '∞' : String(sec), W / 2, 42, 26, sec <= 10 && mode !== 'train' ? '#ff5a5a' : '#fff', 'center', false);
     for (let i = 0; i < 2; i++) for (let k = 0; k < G.WINS_NEEDED; k++) { ctx.fillStyle = k < view.w[i] ? '#ffd23f' : 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(W / 2 + (i ? 1 : -1) * (9 + k * 12), 67, 4, 0, 7); ctx.fill(); }
-    // combo counters
-    for (let i = 0; i < 2; i++) { const s = view.f[i]; if (s.cn >= 2 && (s.cl || s.ct > 0)) { const x = i ? W - 100 : 100, pop = s.cl ? 1 + Math.max(0, 1 - (shown[i] === s.cn ? 1 : 0)) * 0 : 1; txt(s.cn + ' HITS', x, 150, 30 + Math.min(14, s.cn * 2), s.cn > 4 ? '#ffd23f' : '#fff', 'center'); txt(s.cd + ' DMG', x, 174, 16, '#ffb347', 'center'); } shown[i] = s.cn; }
+    // combo counters (pop on every hit, rank words as the combo grows)
+    for (let i = 0; i < 2; i++) { const s = view.f[i]; if (s.cn !== shown[i]) pop[i] = 1; pop[i] *= .84;
+      if (s.cn >= 2 && (s.cl || s.ct > 0)) { const x = i ? W - 100 : 100, sc = 1 + pop[i] * .55, col = s.cn >= 9 ? '#ff5a3a' : s.cn > 4 ? '#ffd23f' : '#fff', fs = 30 + Math.min(14, s.cn * 2);
+        ctx.save(); ctx.translate(x, 150); ctx.rotate((i ? .05 : -.05) * (.4 + pop[i])); ctx.scale(sc, sc); txt(s.cn + ' HITS', 0, 0, fs, col, 'center'); ctx.restore();
+        txt(s.cd + ' DMG', x, 174, 16, '#ffb347', 'center');
+        const rk = s.cn >= 12 ? 'UNREAL!' : s.cn >= 9 ? 'AWESOME!' : s.cn >= 6 ? 'GREAT!' : s.cn >= 4 ? 'NICE!' : ''; if (rk) txt(rk, x, 198, 15 + Math.min(6, s.cn - 3), col, 'center'); }
+      shown[i] = s.cn; }
     ctx.globalAlpha = .8; txt('MENU', W / 2, 92, 12, '#fff', 'center'); ctx.globalAlpha = 1;
     if (mode === 'train') { txt('TRAINING', W / 2, 112, 13, '#8cff9e'); txt('DUMMY: ' + ai.dummy.toUpperCase() + ' ▸', W - 70, 92, 12, '#fff'); }
   }
@@ -140,7 +165,8 @@
     if (v.ph === 'fight' && v.i > 0) {
       const t = 170 - v.i;
       if (v.i > 55) { const u = Math.min(1, t / 12); ctx.save(); ctx.translate(W / 2, H / 2 - 40); ctx.scale(2 - u, 2 - u); ctx.globalAlpha = u; txt('ROUND ' + v.rd, 0, 0, 56, '#fff'); ctx.restore(); }
-      else { const u = Math.min(1, (55 - v.i) / 8); ctx.save(); ctx.translate(W / 2, H / 2 - 40); ctx.scale(.6 + u * .7, .6 + u * .7); txt('FIGHT!', 0, 0, 72, '#ffd23f'); ctx.restore(); }
+      if (v.rd === 1 && v.i > 55) { const u = Math.min(1, (170 - v.i) / 16), e = 1 - Math.pow(1 - u, 3), y = H / 2 + 28; ctx.save(); ctx.globalAlpha = Math.min(1, u * 2) * (v.i < 72 ? (v.i - 55) / 17 : 1); txt(fighters[0].def.name, W / 2 - 40 - (1 - e) * 260, y, 26, fighters[0].def.accent, 'right'); txt('VS', W / 2, y, 30, '#fff'); txt(fighters[1].def.name, W / 2 + 40 + (1 - e) * 260, y, 26, fighters[1].def.accent, 'left'); ctx.restore(); }
+      if (v.i <= 55) { const u = Math.min(1, (55 - v.i) / 8); ctx.save(); ctx.translate(W / 2, H / 2 - 40); ctx.scale(.6 + u * .7, .6 + u * .7); txt('FIGHT!', 0, 0, 72, '#ffd23f'); ctx.restore(); }
     } else if (v.ph === 'fight' && fightT > 0 && fightT < 30) { ctx.save(); ctx.globalAlpha = 1 - fightT / 30; ctx.translate(W / 2, H / 2 - 40); ctx.scale(1.3 + fightT * .02, 1.3 + fightT * .02); txt('FIGHT!', 0, 0, 72, '#ffd23f'); ctx.restore(); }
     if (v.ph === 'roundEnd') {
       const t = 190 - v.e, u = Math.min(1, t / 10), big = v.m === 'K.O.' || v.m === 'DOUBLE K.O.';
@@ -166,6 +192,7 @@
     for (const i of order) {
       const f = fighters[i], s = view.f[i], jit = view.hs > 0 && (f.st === 'hit' || f.st === 'block' || f.st === 'launch') ? (tick % 2 ? 2 : -2) : 0;
       if (s.st === 'dash') for (let g = 2; g >= 1; g--) G.Sprites.draw(ctx, f, t, { ox: -f.facing * (f.wd >= 0 ? 1 : -1) * g * 16, alpha: .18 / g, noShadow: true, noFx: true, noFlash: true });
+      { const am = f.atk && f.atk.m; if (s.st === 'atk' && am && (am.super || (am.mvf && am.mvf.some(k => k.vx >= 9))) && f.atk.t >= am.st - 2 && f.atk.t <= am.st + am.ac + 8) for (let g = 3; g >= 1; g--) G.Sprites.draw(ctx, f, t, { ox: -f.facing * g * 18, alpha: .26 / g, noShadow: true, noFx: true, noFlash: true }); }
       tips[i] = G.Sprites.draw(ctx, f, t, { ox: jit });
     }
     Wd.drawShots(ctx, view.s, t);
@@ -175,17 +202,18 @@
     Wd.end(ctx);
     Wd.drawForeground(ctx, view.sg || 0, t);
     ctx.fillStyle = 'rgba(0,0,0,.18)'; const v = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 480); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-    hud(); banner(); Wd.overlay(ctx);
+    { const mi = mode === 'online' ? slot : 0, me = view.f[mi]; if (view.ph === 'fight' && me.hp > 0 && me.hp / fighters[mi].maxHp < .25) { const pu = .5 + .5 * Math.sin(tick * .12), g2 = ctx.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .85); g2.addColorStop(0, 'rgba(255,0,0,0)'); g2.addColorStop(1, 'rgba(255,20,20,' + (.16 + .22 * pu) + ')'); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); } }
+    hud(); speaker(); banner(); Wd.overlay(ctx); Wd.overlayTop(ctx);
   }
   function draw(t) {
     ctx.clearRect(0, 0, W, H);
     if (screen === 'fight' && view && fighters) return drawFight(t);
     bgMenu(t);
     if (screen === 'menu') {
-      ctx.save(); ctx.translate(W / 2, 62); ctx.rotate(-.03); txt('FIGHT ARENA', 0, 0, 52, '#ffd23f'); ctx.restore(); txt('TEKKEN-STYLE 2D FIGHTER', W / 2, 90, 13, '#cfd3ff');
+      ctx.save(); ctx.translate(W / 2, 62 + Math.sin(t * 2) * 2); ctx.rotate(-.03); ctx.shadowColor = '#ff8a1a'; ctx.shadowBlur = 18 + 8 * Math.sin(t * 3); txt('FIGHT ARENA', 0, 0, 52, '#ffd23f'); ctx.restore(); speaker(); txt('TEKKEN-STYLE 2D FIGHTER', W / 2, 90, 13, '#cfd3ff');
       MENU.forEach((b, i) => btn(250, mbY(i), 300, 46, b.label, false));
       if (notice) txt(notice, W / 2, 410, 16, '#ff9a9a');
-      txt('Keys: WASD / arrows · J U K I = LP HP LK HK · L special · H grab · ; super', W / 2, 438, 11, '#9aa0c8');
+      txt('Keys: WASD / arrows · J U K I = LP HP LK HK · L special · H grab · ; super · M mute', W / 2, 438, 11, '#9aa0c8');
     } else if (screen === 'how') {
       txt('HOW TO PLAY', W / 2, 44, 34, '#ffd23f');
       const L = ['Hold BACK to block. Hold DOWN+BACK to block low attacks.', 'HIGH hits whiff if you crouch. LOW hits need a crouch-block. MID hits (overhead, launcher) beat crouch-blocking.', 'LP, LP, HP = string combo. Press the next button right as the move lands.', 'DOWN-FORWARD + HP = LAUNCHER. Then hit them with LP/HP while they are airborne (juggle).', 'FORWARD + HP = overhead.  FORWARD + HK = long kick.  DOWN + HK = sweep.', 'GRAB (or LP+LK) beats blocking. Opponent can BREAK it by pressing GRAB fast.', 'Each fighter has 5 specials: SP, ↓+SP, →+SP, ←+SP, ↘+SP (see the card names).', 'PRO: ↓↘→+P, →↓↘+P, ↓↙←+K, ↓↙←+P, ↓↘→+K. Double-tap → or ← to dash. →+LK = knee (Steve).', 'Fill the SUPER bar by fighting, then hit SUPER for a screen-filling move.', 'Under 25% health you enter RAGE: +15% damage.'];
@@ -193,14 +221,16 @@
     } else if (screen === 'lobby') {
       btn(BACK.x, BACK.y, BACK.w, BACK.h, 'BACK', false); txt('ROOM CODE', W / 2, 150, 22, '#cfd3ff'); txt(code, W / 2, 240, 90, '#ffd23f'); txt('Send this code to your friend (tap to copy)', W / 2, 290, 16, '#fff'); txt(notice || 'Waiting for friend to join…', W / 2, 330, 16, '#9aa0c8');
     } else if (screen === 'select') {
-      btn(BACK.x, BACK.y, BACK.w, BACK.h, 'BACK', false); txt('CHOOSE YOUR FIGHTER', W / 2, 52, 30, '#ffd23f');
+      btn(BACK.x, BACK.y, BACK.w, BACK.h, 'BACK', false); txt('CHOOSE YOUR FIGHTER', W / 2, 52, 30, '#ffd23f'); speaker();
       if (mode === 'online' && picked >= 0) txt('Waiting for friend…', W / 2, 82, 14, '#cfd3ff');
       for (let i = 0; i < N; i++) {
         const c = G.CHARACTERS[i], x = cardX(i), sel = picked === i;
         const g = ctx.createLinearGradient(0, 96, 0, 358); g.addColorStop(0, 'rgba(30,34,70,.9)'); g.addColorStop(1, 'rgba(12,14,34,.95)'); ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, 96, CW, 262, 12) : ctx.rect(x, 96, CW, 262); ctx.fill(); ctx.lineWidth = sel ? 4 : 2; ctx.strokeStyle = sel ? '#ffd23f' : c.accent; ctx.stroke();
-        const f = previews[i]; f.x = x + CW / 2; f.y = 262; f.st = 'intro'; f.facing = 1; G.Sprites.draw(ctx, f, t * 1.0 + i);
-        const nm = CW < 130; txt(c.name, x + CW / 2, 296, nm ? 12 : 15, '#fff'); txt(c.title, x + CW / 2, 312, nm ? 10 : 11, c.accent, 'center', false);
-        const mv = c.moves; if (!nm) { txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 328, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ' + mv.sp4.name, x + CW / 2, 340, 9, '#cfd3ff', 'center', false); txt(mv.sp5.name + ' · ★ ' + mv.super.name, x + CW / 2, 352, 9, '#ffb04a', 'center', false); } else { txt('5 specials', x + CW / 2, 330, 9, '#cfd3ff', 'center', false); txt('★ ' + mv.super.name, x + CW / 2, 344, 8, '#ffb04a', 'center', false); }
+        const f = previews[i], cx = x + CW / 2, ps = CW < 100 ? .86 : 1; f.x = cx; f.y = 262; f.st = 'intro'; f.facing = 1; ctx.save(); ctx.translate(cx, 262); ctx.scale(ps, ps); ctx.translate(-cx, -262); G.Sprites.draw(ctx, f, t * 1.0 + i); ctx.restore();
+        const nm = CW < 130, words = c.name.split(' ');
+        if (nm && words.length > 1) { fit(words[0], cx, 288, CW - 8, 12, '#fff'); fit(words.slice(1).join(' '), cx, 301, CW - 8, 12, '#fff'); fit(c.title, cx, 315, CW - 8, 10, c.accent, 'center', false); }
+        else { fit(c.name, cx, 296, CW - 8, nm ? 12 : 15, '#fff'); fit(c.title, cx, 312, CW - 8, nm ? 10 : 11, c.accent, 'center', false); }
+        const mv = c.moves; if (!nm) { txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 328, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ' + mv.sp4.name, x + CW / 2, 340, 9, '#cfd3ff', 'center', false); txt(mv.sp5.name + ' · ★ ' + mv.super.name, x + CW / 2, 352, 9, '#ffb04a', 'center', false); } else { fit('5 specials', cx, 331, CW - 8, 9, '#cfd3ff', 'center', false); fit('★ ' + mv.super.name, cx, 345, CW - 6, 8, '#ffb04a', 'center', false); }
       }
       if (mode === 'bot') ['easy', 'normal', 'hard'].forEach((d, i) => btn(250 + i * 104, 372, 92, 30, d.toUpperCase(), lvl === d));
       if (mode === 'train') txt('Practice combos on a dummy. Meter is always full.', W / 2, 392, 13, '#8cff9e');
