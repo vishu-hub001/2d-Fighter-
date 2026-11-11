@@ -53,7 +53,7 @@ Game.AI = (function () {
       else if (r < .57) enqueue(s, me, [[1, 'd', B.lk], [7, 'd', 0], [1, '', B.lp]]);
       else if (r < .66) enqueue(s, me, [[1, 'f', B.hp]]);
       else if (r < .74) enqueue(s, me, [[1, '', B.hk]]);
-      else if (r < .8) enqueue(s, me, [[1, 'd', B.sp]]);
+      else if (r < .8) enqueue(s, me, [[1, pick(['d', 'b', 'df', 'f']), B.sp]]);
       else if (r < .9) { s.guardT = 25; s.guardLow = Math.random() < .4; }
       else return dirs(me, 'b');
     }

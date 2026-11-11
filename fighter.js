@@ -185,7 +185,7 @@
         const mask = c.btn === 'p' ? P : K;
         if (this.pressed(mask, 6) && this.motion(c.seq)) { this.consume(mask); return c.move; }
       }
-      if (this.pressed(B.sp, 7)) { this.consume(B.sp); return d.spMap[bd <= 3 ? 2 : bd === 6 || bd === 9 ? 6 : 5]; }
+      if (this.pressed(B.sp, 7)) { this.consume(B.sp); return d.spMap[bd === 3 ? 3 : bd <= 2 ? 2 : bd === 6 || bd === 9 ? 6 : bd === 4 || bd === 7 ? 4 : 5]; }
       return null;
     }
     pressedAttack() {
@@ -204,6 +204,7 @@
       let key = 'lp'; for (const [k, bit] of PRIO) if (agg & bit) { key = k; break; }
       if (key === 'hp' && bd === 3) return 'launcher';
       if (bd <= 3) return 'c' + key;
+      { const pre = bd === 6 ? 'f' : bd === 4 ? 'b' : ''; if (pre && this.def.moves[pre + key]) return pre + key; }
       if (bd === 6 && key === 'hp') return 'ovh';
       if (bd === 6 && key === 'hk') return 'fk';
       return key;

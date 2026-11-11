@@ -9,7 +9,12 @@ Server-authoritative 60 Hz fighting game. Upload ALL files in this folder (flat,
 - **Motion inputs** (↓↘→ + P fireball, →↓↘ + P uppercut, ↓↙← + K) with input buffer, **double-tap dash / back-dash**.
   On phone use the **SP** button: SP = projectile, ↓+SP = uppercut, →+SP = rush move.
 - **SUPER meter** + cinematic supers, hitstop, screen shake, hit sparks, slow-mo K.O.
-- 4 fighters (Thunder Lord, Iron Knight, Kage, Brutus), each with their own strings, specials and super.
+- **7 fighters, each with a different fighting style, 5 specials + a super:**
+  Thunder Lord (all-rounder), Iron Knight (power / artillery), Kage (speed, mix-ups), Brutus (grappler),
+  **Oggy** (trickster: arcing bombs, belly flop, drunken roll), **Jack** (saber swordsman: long reach, wave slash, pistol shot, whirlwind),
+  **Steve** (Muay Thai: knees, spin back kick, axe kick, air slash).
+- Specials on keyboard/pad: ↓↘→+P, →↓↘+P, ↓↙←+K, ↓↙←+P, ↓↘→+K. On touch: SP, ↓+SP, →+SP, ←+SP, ↘+SP.
+- More strings (LK,LK,HK / LP,LP,HP / →+LK knee for Steve) and per-fighter idle stance + animation style.
 - Fully rigged procedural **skeletal sprites** (IK limbs, capes/scarves, faces), 3 animated stages, dynamic zoom camera, sound effects.
 - Smarter bot with 3 difficulties, **Training mode** (dummy: stand / block / crouch-block).
 

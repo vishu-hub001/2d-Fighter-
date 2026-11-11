@@ -17,7 +17,7 @@ Game.Match = class {
   shotsOf(i) { let n = 0; for (const s of this.shots) if (s.o === i && s.p.n === undefined) n++; return n; }
   spawnShot(f, m) {
     const p = m.proj;
-    this.shots.push({ id: ++this.sid, x: f.x + f.facing * 40, y: p.y, vx: f.facing * p.speed, o: f.idx, p, life: p.life, n: p.n || 1, cd: 0, d: f.facing });
+    this.shots.push({ id: ++this.sid, x: f.x + f.facing * 40, y: p.y, vx: f.facing * p.speed, o: f.idx, p, life: p.life, n: p.n || 1, cd: 0, d: f.facing, vy: p.vy || 0, g: p.g || 0, bn: 0 });
     this.events.push({ t: 'shot', x: f.x + f.facing * 40, y: Game.GROUND - p.y, i: f.idx, c: p.color });
   }
   techBreak(a, b) {
@@ -119,6 +119,7 @@ Game.Match = class {
     const G = Game, F = this.f;
     for (const s of this.shots) {
       s.x += s.vx; s.life--; if (s.cd > 0) s.cd--;
+      if (s.g) { s.y += s.vy; s.vy -= s.g; if (s.y < 14) { s.y = 14; if (s.bn < 1) { s.vy = Math.abs(s.vy) * .55; s.bn++; this.events.push({ t: 'dust', x: s.x, k: 'land', d: 1 }); } else { s.dead = true; this.events.push({ t: 'clash', x: s.x, y: Game.GROUND - 14 }); continue; } } }
       if (s.life <= 0 || s.x < -60 || s.x > G.STAGE_W + 60) { s.dead = true; continue; }
       const B = F[1 - s.o], A = F[s.o], p = s.p, lvl = p.lvl || 'a';
       if (s.cd > 0) continue;

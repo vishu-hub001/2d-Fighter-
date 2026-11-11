@@ -10,7 +10,7 @@
   let screen = 'menu', mode = 'bot', slot = 0, code = '', picked = -1, notice = '', match = null, view = null, fighters = null, ai = G.AI.mk(), lvl = 'normal';
   let lag = [1, 1], lastRound = 0, tick = 0, shown = [0, 0], fightT = 0;
   const previews = G.CHARACTERS.map(c => new G.Fighter(c, 0, 1));
-  const CW = Math.min(172, (W - 60 - (N - 1) * 16) / N), cardX = i => (W - (N * CW + (N - 1) * 16)) / 2 + i * (CW + 16);
+  const GAP = N > 5 ? 8 : 16, CW = Math.min(172, (W - 40 - (N - 1) * GAP) / N), cardX = i => (W - (N * CW + (N - 1) * GAP)) / 2 + i * (CW + GAP);
   const MENU = [{ label: 'PLAY VS BOT', a: 'bot' }, { label: 'TRAINING', a: 'train' }, { label: 'CREATE ROOM', a: 'create' }, { label: 'JOIN ROOM', a: 'join' }, { label: 'HOW TO PLAY', a: 'how' }];
   const BACK = { x: 10, y: 10, w: 80, h: 32 }, mbY = i => 112 + i * 54;
   const inR = (x, y, r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
@@ -188,7 +188,7 @@
       txt('Keys: WASD / arrows · J U K I = LP HP LK HK · L special · H grab · ; super', W / 2, 438, 11, '#9aa0c8');
     } else if (screen === 'how') {
       txt('HOW TO PLAY', W / 2, 44, 34, '#ffd23f');
-      const L = ['Hold BACK to block. Hold DOWN+BACK to block low attacks.', 'HIGH hits whiff if you crouch. LOW hits need a crouch-block. MID hits (overhead, launcher) beat crouch-blocking.', 'LP, LP, HP = string combo. Press the next button right as the move lands.', 'DOWN-FORWARD + HP = LAUNCHER. Then hit them with LP/HP while they are airborne (juggle).', 'FORWARD + HP = overhead.  FORWARD + HK = long kick.  DOWN + HK = sweep.', 'GRAB (or LP+LK) beats blocking. Opponent can BREAK it by pressing GRAB fast.', 'SP = special. SP / DOWN+SP / FORWARD+SP give each fighter 3 specials.', 'PRO: ↓↘→ + punch, →↓↘ + punch, ↓↙← + kick. Double-tap → or ← to dash.', 'Fill the SUPER bar by fighting, then hit SUPER for a screen-filling move.', 'Under 25% health you enter RAGE: +15% damage.'];
+      const L = ['Hold BACK to block. Hold DOWN+BACK to block low attacks.', 'HIGH hits whiff if you crouch. LOW hits need a crouch-block. MID hits (overhead, launcher) beat crouch-blocking.', 'LP, LP, HP = string combo. Press the next button right as the move lands.', 'DOWN-FORWARD + HP = LAUNCHER. Then hit them with LP/HP while they are airborne (juggle).', 'FORWARD + HP = overhead.  FORWARD + HK = long kick.  DOWN + HK = sweep.', 'GRAB (or LP+LK) beats blocking. Opponent can BREAK it by pressing GRAB fast.', 'Each fighter has 5 specials: SP, ↓+SP, →+SP, ←+SP, ↘+SP (see the card names).', 'PRO: ↓↘→+P, →↓↘+P, ↓↙←+K, ↓↙←+P, ↓↘→+K. Double-tap → or ← to dash. →+LK = knee (Steve).', 'Fill the SUPER bar by fighting, then hit SUPER for a screen-filling move.', 'Under 25% health you enter RAGE: +15% damage.'];
       L.forEach((s, i) => txt(s, W / 2, 84 + i * 31, 14, '#fff', 'center', false)); txt('Tap to go back', W / 2, 425, 14, '#9aa0c8');
     } else if (screen === 'lobby') {
       btn(BACK.x, BACK.y, BACK.w, BACK.h, 'BACK', false); txt('ROOM CODE', W / 2, 150, 22, '#cfd3ff'); txt(code, W / 2, 240, 90, '#ffd23f'); txt('Send this code to your friend (tap to copy)', W / 2, 290, 16, '#fff'); txt(notice || 'Waiting for friend to join…', W / 2, 330, 16, '#9aa0c8');
@@ -198,9 +198,9 @@
       for (let i = 0; i < N; i++) {
         const c = G.CHARACTERS[i], x = cardX(i), sel = picked === i;
         const g = ctx.createLinearGradient(0, 96, 0, 358); g.addColorStop(0, 'rgba(30,34,70,.9)'); g.addColorStop(1, 'rgba(12,14,34,.95)'); ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, 96, CW, 262, 12) : ctx.rect(x, 96, CW, 262); ctx.fill(); ctx.lineWidth = sel ? 4 : 2; ctx.strokeStyle = sel ? '#ffd23f' : c.accent; ctx.stroke();
-        const f = previews[i]; f.x = x + CW / 2; f.y = 266; f.st = 'intro'; f.facing = 1; G.Sprites.draw(ctx, f, t * 1.0 + i);
-        txt(c.name, x + CW / 2, 298, 15, '#fff'); txt(c.title, x + CW / 2, 314, 11, c.accent, 'center', false);
-        const mv = c.moves; txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 331, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ★ ' + mv.super.name, x + CW / 2, 345, 9, '#cfd3ff', 'center', false);
+        const f = previews[i]; f.x = x + CW / 2; f.y = 262; f.st = 'intro'; f.facing = 1; G.Sprites.draw(ctx, f, t * 1.0 + i);
+        const nm = CW < 130; txt(c.name, x + CW / 2, 296, nm ? 12 : 15, '#fff'); txt(c.title, x + CW / 2, 312, nm ? 10 : 11, c.accent, 'center', false);
+        const mv = c.moves; if (!nm) { txt(mv.sp1.name + ' · ' + mv.sp2.name, x + CW / 2, 328, 9, '#cfd3ff', 'center', false); txt(mv.sp3.name + ' · ' + mv.sp4.name, x + CW / 2, 340, 9, '#cfd3ff', 'center', false); txt(mv.sp5.name + ' · ★ ' + mv.super.name, x + CW / 2, 352, 9, '#ffb04a', 'center', false); } else { txt('5 specials', x + CW / 2, 330, 9, '#cfd3ff', 'center', false); txt('★ ' + mv.super.name, x + CW / 2, 344, 8, '#ffb04a', 'center', false); }
       }
       if (mode === 'bot') ['easy', 'normal', 'hard'].forEach((d, i) => btn(250 + i * 104, 372, 92, 30, d.toUpperCase(), lvl === d));
       if (mode === 'train') txt('Practice combos on a dummy. Meter is always full.', W / 2, 392, 13, '#8cff9e');

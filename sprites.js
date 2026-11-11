@@ -54,27 +54,39 @@
     shoulder: { c: [-4, -58, .4, .1, 20, -96, 6, -90, 34, 0, -26, 0],          e: [22, -56, .64, .2, 48, -92, 30, -86, 42, 0, -30, -4] },
     superbolt: { c: [-2, -66, -.04, 0, 22, -130, 6, -128, 22, 0, -22, 0],      e: [0, -68, -.14, -.16, 30, -184, 8, -182, 24, 0, -24, 0] },
     superbeam: { c: [-6, -64, .0, 0, 10, -106, 6, -104, 26, 0, -26, 0],        e: [8, -60, .3, 0, 76, -108, 64, -104, 34, 0, -30, 0] },
+    knee:     { c: [-4, -68, .0, 0, 24, -114, 8, -108, 26, -34, -22, 0],        e: [8, -72, .14, 0, 28, -118, 8, -112, 30, -72, -18, 0] },
+    spinkick: { c: [-6, -66, -.1, -.1, 10, -110, -8, -104, 22, -20, -22, 0],    e: [-10, -66, -.24, -.2, -12, -110, -22, -104, 90, -70, -18, 0] },
+    axekick:  { c: [-8, -70, -.2, 0, 20, -114, 6, -106, 36, -150, -20, 0],      e: [8, -64, .12, 0, 24, -112, 8, -104, 64, -28, -20, 0] },
+    headbutt: { c: [-8, -62, .1, 0, 20, -100, 8, -96, 30, 0, -26, 0],           e: [12, -60, .62, .3, 20, -92, 6, -90, 32, 0, -28, 0] },
+    clothes:  { c: [-4, -64, .05, 0, 20, -112, -10, -108, 28, 0, -28, 0],        e: [4, -64, .12, 0, 82, -114, -52, -112, 28, 0, -28, 0] },
     superdash: { c: [-12, -56, .34, .05, 20, -100, 2, -100, 30, 0, -32, 0],    e: [26, -56, .6, .12, 84, -92, 20, -96, 46, 0, -36, -4] }
   };
   const DEF = { c: null, e: P.jab.e };
+  // each fighting style has its own idle stance
+  const STANCE = {
+    prank:   [-4, -62, .06, 0,  30, -106, 16, -100,  28, 0, -26, 0],      // wide, loose, bouncy
+    pirate:  [-4, -66, .10, 0,  42, -120, 12, -100,  24, 0, -24, 0],      // blade out front
+    kick:    [-4, -66, .14, .04, 24, -122, 18, -116, 20, 0, -26, 0]       // tight kickboxing guard
+  };
+  const stanceOf = f => STANCE[f.def.look] || P.stand;
 
   // ------------------------------------------------------------------ pose selection per fighter state
   function poseOf(f, T) {
-    const st = f.st, br = Math.sin(T * 3.2 + f.idx * 1.7), out = { v: P.stand, rot: 0, off: [0, 0], face: 'n' };
-    const breathe = v => { const w = v.slice(); w[1] += br * 1.1; w[4] += br * .8; w[5] += br * .8; w[6] += br * .6; w[2] += br * .012; return w; };
+    const bz = f.def.bounce || 1, S0 = stanceOf(f), st = f.st, br = Math.sin(T * 3.2 * (bz > 1 ? 1.8 : 1) + f.idx * 1.7), out = { v: S0, rot: 0, off: [0, 0], face: 'n' };
+    const breathe = v => { const w = v.slice(); w[1] += br * 1.1 * bz; w[4] += br * .8 * bz; w[5] += br * .8 * bz; w[6] += br * .6 * bz; w[2] += br * .012 * bz; if (bz > 1.5) { w[8] += br * 3; w[10] -= br * 3; } return w; };
     switch (st) {
-      case 'intro': out.v = breathe(P.stand); out.v[2] += .05; break;
+      case 'intro': out.v = breathe(S0); out.v[2] += .05; break;
       case 'stand':
         if (f.guard === 1) out.v = P.guard;
         else if (f.wd) {
-          const ph = f.wd > 0 ? f.anim : -f.anim, v = P.stand.slice(), s1 = Math.sin(ph), s2 = Math.sin(ph + Math.PI);
+          const ph = f.wd > 0 ? f.anim : -f.anim, v = S0.slice(), s1 = Math.sin(ph), s2 = Math.sin(ph + Math.PI);
           v[8] = 6 + 22 * s1; v[9] = -9 * Math.max(0, Math.cos(ph)); v[10] = 6 + 22 * s2; v[11] = -9 * Math.max(0, Math.cos(ph + Math.PI));
           v[1] += Math.abs(Math.sin(ph)) * 3 - 1; v[2] += f.wd > 0 ? .04 : -.02; out.v = v;
-        } else out.v = breathe(P.stand);
+        } else out.v = breathe(S0);
         break;
       case 'crouch': out.v = f.guard === 2 ? P.cguard : P.crouch; break;
       case 'prejump': out.v = P.prejump; break;
-      case 'land': out.v = mix(P.prejump, P.stand, clamp(f.sf / 6, 0, 1)); break;
+      case 'land': out.v = mix(P.prejump, S0, clamp(f.sf / 6, 0, 1)); break;
       case 'air': out.v = f.vy < -2 ? P.jumpUp : mix(P.jumpUp, P.jumpDn, clamp((f.vy + 2) / 8, 0, 1)); break;
       case 'dash': { const u = clamp(f.sf / 6, 0, 1); out.v = mix(P.stand, f.wd >= 0 ? P.dashF : P.dashB, easeOut(u)); out.dashing = true; break; }
       case 'block': { const k = f.sf < 4 ? (1 - f.sf / 4) : 0; out.v = (f.crouchHit ? P.cguard : P.guard).slice(); out.v[0] -= 5 * k; out.v[2] -= .06 * k; out.v[4] -= 4 * k; out.face = 'b'; break; }
@@ -88,14 +100,14 @@
       case 'down': case 'ko': out.v = P.lying; out.rot = -1.5708; out.off = [-6, 52]; out.face = 'k'; break;
       case 'wake': { const u = clamp(f.sf / 16, 0, 1); out.v = mix(P.lying, P.crouch, ease(u)); out.rot = -1.5708 * (1 - ease(u)); out.off = [-6 * (1 - u), 52 * (1 - ease(u))]; break; }
       case 'grab': { const u = clamp(f.sf / 12, 0, 1); out.v = P.grabbed; out.rot = -.5; out.off = [0, -22 * Math.sin(Math.PI * u) - 6]; out.face = 'h'; break; }
-      case 'win': { const u = clamp(f.sf / 10, 0, 1); out.v = mix(P.stand, P.win, easeOut(u)); out.v = out.v.slice(); out.v[1] += Math.sin(T * 5) * 1.2; break; }
+      case 'win': { const u = clamp(f.sf / 10, 0, 1); out.v = mix(S0, P.win, easeOut(u)); out.v = out.v.slice(); out.v[1] += Math.sin(T * 5) * 1.2; break; }
       case 'atk': return attackPose(f, out);
     }
     return out;
   }
   function attackPose(f, out) {
     const a = f.atk, m = a.m, t = a.t, A = P[m.pose] || DEF;
-    const base = f.st === 'atk' && m.stance === 'crouch' ? P.crouch : m.air || f.y < G.GROUND - 4 ? P.jumpUp : P.stand;
+    const base = f.st === 'atk' && m.stance === 'crouch' ? P.crouch : m.air || f.y < G.GROUND - 4 ? P.jumpUp : stanceOf(f);
     const total = m.st + m.ac + m.rc; out.face = 'a';
     if (a.grabT >= 0) { out.v = A.e; return out; }
     if (t <= m.st) {
@@ -160,6 +172,9 @@
     thunder: { arm: [27, 27], aw: [13, 11, 9], leg: { thigh: 'dark', shin: 'dark', foot: '#2a2f4a' }, armCol: ['suit', 'skin', 'skin'], lw: [16, 12.5], torsoW: [30, 25] },
     knight:  { arm: [27, 27], aw: [14, 13, 12], leg: { thigh: 'suit', shin: 'suit', foot: 'accent' }, armCol: ['suit', 'suit', 'accent'], lw: [17, 13.5], torsoW: [34, 27] },
     ninja:   { arm: [27, 27], aw: [11, 9.5, 8], leg: { thigh: 'suit', shin: 'dark', foot: '#15102a' }, armCol: ['suit', 'suit', 'skin'], lw: [14, 11], torsoW: [27, 22] },
+    prank:   { arm: [27, 27], aw: [15, 13, 12], leg: { thigh: 'suit', shin: 'suit', foot: '#f4f4f4' }, armCol: ['suit', 'suit', 'skin'], lw: [18, 14], torsoW: [38, 36] },
+    pirate:  { arm: [27, 27], aw: [12, 10.5, 9], leg: { thigh: 'dark', shin: '#5a3a22', foot: '#3a2514' }, armCol: ['suit', 'suit', 'skin'], lw: [16, 12.5], torsoW: [34, 28], blade: 74 },
+    kick:    { arm: [27, 27], aw: [13, 11.5, 11], leg: { thigh: 'suit', shin: 'skin', foot: 'accent' }, armCol: ['skin', 'skin', 'accent'], lw: [17, 13], torsoW: [34, 28] },
     brawler: { arm: [28, 28], aw: [17, 14.5, 14], leg: { thigh: 'suit', shin: 'suit', foot: '#2a1a12' }, armCol: ['skin', 'skin', '#d6491f'], lw: [20, 15.5], torsoW: [40, 31] }
   };
 
@@ -191,7 +206,8 @@
     ctx.restore();
     // world-space tips for trails
     const wx = p => f.x + f.facing * p[0] * sc, wy = p => f.y + p[1] * sc;
-    return { striking: !!pz.striking, hand: [wx(J.hF), wy(J.hF)], hand2: [wx(J.hB), wy(J.hB)], foot: [wx(J.fF), wy(J.fF)], head: [wx(J.Hc), wy(J.Hc)], chest: [wx(add(J.hip, [0, -30])), wy(add(J.hip, [0, -30]))], dashing: !!pz.dashing, rot: pz.rot };
+    let tipF = J.hF; if (look.blade) { let dx = J.hF[0] - J.eF[0], dy = J.hF[1] - J.eF[1]; const dd = Math.hypot(dx, dy) || 1; tipF = [J.hF[0] + dx / dd * look.blade, J.hF[1] + dy / dd * look.blade]; }
+    return { striking: !!pz.striking, hand: [wx(tipF), wy(tipF)], hand2: [wx(J.hB), wy(J.hB)], foot: [wx(J.fF), wy(J.fF)], head: [wx(J.Hc), wy(J.Hc)], chest: [wx(add(J.hip, [0, -30])), wy(add(J.hip, [0, -30]))], dashing: !!pz.dashing, rot: pz.rot };
   }
 
   function drawArm(c, s, e, h, back) {
@@ -332,6 +348,79 @@
         ctx.fillStyle = C('accent'); ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(12.5, -8.5); ctx.lineTo(12.5, -5.5); ctx.lineTo(-12, -2.5); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1; ctx.stroke();
         // band tails
         const sw = Math.sin(T * 8) * 3; poly(ctx, [[-12, -5], [-26, -9 + sw], [-34, -1 + sw * 1.4], [-24, -1 + sw], [-12, -1]], C('accent'));
+        ctx.restore();
+      }
+    },
+
+    prank: {
+      torso(c) {
+        const { ctx, C } = c, t = torsoShape(c, 38, 38, C('suit'), 8);
+        ctx.strokeStyle = C('accent'); ctx.lineWidth = 4; ctx.lineCap = 'round'; const a = t.at(.96, -14), b = t.at(.06, -15); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        const z0 = t.at(.92, 6), z1 = t.at(.1, 8); ctx.strokeStyle = C('dark'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(z0[0], z0[1]); ctx.lineTo(z1[0], z1[1]); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.14)'; const bl = t.at(.4, 12); ctx.beginPath(); ctx.ellipse(bl[0], bl[1], 8, 12, c.J.lean, 0, 7); ctx.fill();
+        const w0 = t.at(.03, -17), w1 = t.at(.03, 19), w2 = t.at(.13, 19), w3 = t.at(.13, -17); poly(ctx, [w0, w1, w2, w3], C('accent'));
+      },
+      head(c) {
+        const { C, pz } = c, ctx = headBase(c, C('skin'), true);
+        ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-9, -8); ctx.lineTo(-8, -20); ctx.lineTo(-3, -12); ctx.lineTo(0, -24); ctx.lineTo(4, -12); ctx.lineTo(9, -21); ctx.lineTo(9, -8); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,90,90,.35)'; ctx.beginPath(); ctx.arc(3, 5, 3.4, 0, 7); ctx.fill();
+        face(ctx, pz.face, { eye: '#222', brow: '#1a6f6f', noMouth: true });
+        if (pz.face === 'n' || pz.face === 'a') { ctx.fillStyle = '#4a1510'; ctx.beginPath(); ctx.arc(7, 5.5, 5.4, 0.05, Math.PI - .05); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(3.2, 5.8, 8, 1.8); }
+        else { ctx.fillStyle = '#4a1510'; ctx.beginPath(); ctx.ellipse(7, 8, 2.4, 3, 0, 0, 7); ctx.fill(); }
+        ctx.restore();
+      }
+    },
+    pirate: {
+      back(c) {
+        const { ctx, J, C, T } = c, h = J.hip, sw = Math.sin(T * 5) * 2;
+        poly(ctx, [[h[0] - 4, h[1] - 6], [h[0] - 26 + sw, h[1] + 36], [h[0] - 14, h[1] + 40], [h[0] + 2, h[1] + 30], [h[0] + 4, h[1] - 4]], shade(c.d.suit, -.2));
+      },
+      torso(c) {
+        const { ctx, C, J } = c, t = torsoShape(c, 34, 28, C('suit'), 3);
+        poly(ctx, [t.at(.98, 10), t.at(.98, -4), t.at(.5, 4)], C('#f1ece0'), false);
+        ctx.fillStyle = C('accent'); for (let i = 0; i < 3; i++) { const b = t.at(.2 + i * .15, 11); ctx.beginPath(); ctx.arc(b[0], b[1], 2, 0, 7); ctx.fill(); }
+        const b0 = t.at(.02, -15), b1 = t.at(.02, 15), b2 = t.at(.13, 15), b3 = t.at(.13, -15); poly(ctx, [b0, b1, b2, b3], C('#5a3a22'));
+        const bk = t.at(.075, 8); ctx.fillStyle = C('accent'); ctx.fillRect(bk[0] - 3, bk[1] - 3, 6, 6);
+        ctx.strokeStyle = C('accent'); ctx.lineWidth = 2; const l0 = t.at(.95, -13), l1 = t.at(.3, -14); ctx.beginPath(); ctx.moveTo(l0[0], l0[1]); ctx.lineTo(l1[0], l1[1]); ctx.stroke();
+      },
+      armDeco(c, s, e, h) { taper(c.ctx, along(e, h, .55), along(e, h, .85), 11, 10, '#f1ece0', true); },
+      head(c) {
+        const { C, pz } = c, ctx = headBase(c, C('skin'), true);
+        ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-12, -2); ctx.lineTo(-13, 8); ctx.lineTo(-7, 3); ctx.lineTo(-6, -6); ctx.closePath(); ctx.fill();
+        face(ctx, pz.face, { eye: '#2a1a12', brow: '#111', noMouth: false, noEye: true });
+        // eyepatch + strap
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(8.5, -2.5); ctx.stroke(); ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(5.5, -1.5, 3.8, 3.4, 0, 0, 7); ctx.fill();
+        // goatee
+        ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(4, 10); ctx.lineTo(11, 8); ctx.lineTo(8, 17); ctx.closePath(); ctx.fill();
+        // tricorn hat
+        ctx.fillStyle = C('#15151f'); ctx.beginPath(); ctx.moveTo(-17, -6); ctx.lineTo(-7, -22); ctx.lineTo(9, -22); ctx.lineTo(19, -7); ctx.quadraticCurveTo(6, -11, -6, -9); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.strokeStyle = C('accent'); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-15, -7); ctx.quadraticCurveTo(2, -12, 17, -8); ctx.stroke();
+        ctx.fillStyle = C('#c0272d'); ctx.beginPath(); ctx.arc(-2, -16, 2.4, 0, 7); ctx.fill();
+        ctx.restore();
+      },
+      front(c) {
+        const { ctx, J } = c, e = J.eF, h = J.hF; let dx = h[0] - e[0], dy = h[1] - e[1]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d; const nx = -dy, ny = dx;
+        const b = add(h, [dx, dy], 4), tip = add(h, [dx, dy], 76);
+        ctx.strokeStyle = OUT; ctx.lineWidth = 5.4; ctx.beginPath(); ctx.moveTo(b[0] - nx * 8, b[1] - ny * 8); ctx.lineTo(b[0] + nx * 8, b[1] + ny * 8); ctx.stroke(); ctx.strokeStyle = c.C('accent'); ctx.lineWidth = 3; ctx.stroke();
+        poly(ctx, [add(b, [nx, ny], 3.4), add(tip, [dx, dy], 2), add(b, [nx, ny], -3.4)], c.f.flash > 0 ? '#fff' : '#e4ecf6');
+        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(b[0] + dx * 6, b[1] + dy * 6); ctx.lineTo(tip[0] - dx * 6, tip[1] - dy * 6); ctx.stroke();
+      }
+    },
+    kick: {
+      torso(c) {
+        const { ctx, C } = c, t = torsoShape(c, 34, 28, C('top'), 3);
+        ctx.fillStyle = 'rgba(0,0,0,.18)'; const n = t.at(.92, 3); ctx.beginPath(); ctx.ellipse(n[0], n[1], 6, 4, 0, 0, 7); ctx.fill();
+        const w0 = t.at(-.02, -14), w1 = t.at(-.02, 15), w2 = t.at(.12, 15), w3 = t.at(.12, -14); poly(ctx, [w0, w1, w2, w3], C('suit'));
+        ctx.strokeStyle = C('accent'); ctx.lineWidth = 3; const a = t.at(.12, -14), b = t.at(.12, 15); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        const s1 = t.at(.95, 10), s2 = t.at(.3, 12); ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(s1[0], s1[1]); ctx.lineTo(s2[0], s2[1]); ctx.stroke();
+      },
+      armDeco(c, s, e, h) { taper(c.ctx, along(e, h, .1), along(e, h, .8), 12.5, 12, c.C('accent'), true); },
+      legDeco(c, hip, k, f) { taper(c.ctx, along(k, f, .15), along(k, f, .75), 12, 8.5, c.C('accent'), true); },
+      head(c) {
+        const { C, pz } = c, ctx = headBase(c, C('skin'), true);
+        ctx.fillStyle = C('hair'); ctx.beginPath(); ctx.moveTo(-12, 2); ctx.lineTo(-13, -8); ctx.lineTo(-7, -14); ctx.lineTo(-1, -20); ctx.lineTo(4, -13); ctx.lineTo(10, -15); ctx.lineTo(12, -8); ctx.lineTo(5, -7); ctx.lineTo(-4, -4); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.4; ctx.stroke();
+        face(ctx, pz.face, { eye: '#2a5a3a', brow: '#3a2414' });
+        ctx.fillStyle = 'rgba(60,40,20,.35)'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(2 + i * 1.8, 9 + (i % 2) * 2, .8, 0, 7); ctx.fill(); }
         ctx.restore();
       }
     },
